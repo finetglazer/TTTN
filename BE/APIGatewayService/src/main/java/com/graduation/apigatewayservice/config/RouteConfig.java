@@ -1,5 +1,6 @@
 package com.graduation.apigatewayservice.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
@@ -15,7 +16,9 @@ public class RouteConfig {
     }
 
     @Bean
-    public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+    public RouteLocator customRouteLocator(RouteLocatorBuilder builder,
+                                           @Value("${service.order.url:http://localhost:8081}") String orderServiceUrl,
+                                           @Value("${service.payment.url:http://localhost:8082}") String paymentServiceUrl) {
         return builder.routes()
                 // Order Service Route
                 .route("order-service-route", r -> r
@@ -28,7 +31,7 @@ public class RouteConfig {
                                         .setFallbackUri("forward:/fallback/order-service")
                                 )
                         )
-                        .uri("http://localhost:8081")
+                        .uri(orderServiceUrl)
                 )
 
                 // Payment Service Route
@@ -42,7 +45,7 @@ public class RouteConfig {
                                         .setFallbackUri("forward:/fallback/payment-service")
                                 )
                         )
-                        .uri("http://localhost:8082")
+                        .uri(paymentServiceUrl)
                 )
 
                 // Health check route for gateway itself

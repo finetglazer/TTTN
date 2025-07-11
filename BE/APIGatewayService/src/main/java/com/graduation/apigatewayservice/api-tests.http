@@ -7,4 +7,4 @@ GET http://localhost:8080/api/payments/health
 Accept: application/json
 
 ### Rate Limit Test with Script
-GET http://order-service:8080/api/orders/test
+GET http://api-gateway-service:8080/api/orders/test
