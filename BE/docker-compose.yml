@@ -110,8 +110,8 @@ services:
       context: ./OrderService
       dockerfile: Dockerfile
     container_name: order-service
-    ports:
-      - "8081:8081"
+#    ports: -> Blocking external port 8081(localhost:8081), only let internal access(order-service:8081)
+#      - "8081:8081"
     environment:
       SPRING_PROFILES_ACTIVE: product
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-orderservice:5432/order_service_db
@@ -133,8 +133,8 @@ services:
       context: ./PaymentService
       dockerfile: Dockerfile
     container_name: payment-service
-    ports:
-      - "8082:8082"
+#    ports:
+#      - "8082:8082"
     environment:
       SPRING_PROFILES_ACTIVE: product
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-paymentservice:5432/payment_service_db

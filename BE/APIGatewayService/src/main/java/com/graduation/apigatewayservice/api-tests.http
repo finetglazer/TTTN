@@ -7,27 +7,4 @@ GET http://localhost:8080/api/payments/health
 Accept: application/json
 
 ### Rate Limit Test with Script
-GET http://localhost:8080/api/orders/test
-
-> {%
-    client.test("Rate Limit Test", function() {
-        client.log("Response status: " + response.status);
-        client.log("Response headers: " + JSON.stringify(response.headers));
-
-        // Check for rate limiting headers
-        if (response.headers.valueOf("X-RateLimit-Remaining")) {
-            client.log("Rate limit remaining: " + response.headers.valueOf("X-RateLimit-Remaining"));
-        }
-
-        if (response.status === 429) {
-            client.log("🛑 Rate limit triggered!");
-        }
-    });
-
-    // Loop for multiple requests (be careful with this)
-    for (let i = 0; i < 10; i++) {
-        client.log("Sending request " + (i + 1));
-        // Note: You can't actually send requests in a loop like this in HTTP files
-        // Use the approach below instead
-    }
-%}
+GET http://order-service:8080/api/orders/test
