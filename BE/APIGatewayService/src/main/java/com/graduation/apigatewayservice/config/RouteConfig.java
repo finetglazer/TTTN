@@ -1,10 +1,9 @@
 package com.graduation.apigatewayservice.config;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cloud.gateway.route.RouteLocator;
-import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
+import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 
 @Configuration
 public class RouteConfig {
@@ -15,46 +14,29 @@ public class RouteConfig {
         this.rateLimitGatewayFilter = rateLimitGatewayFilter;
     }
 
+    /**
+     * Apply rate limiting globally to all routes
+     * Circuit breaker and other routing configs are handled in application.properties
+     */
     @Bean
-    public RouteLocator customRouteLocator(RouteLocatorBuilder builder,
-                                           @Value("${service.order.url:http://localhost:8081}") String orderServiceUrl,
-                                           @Value("${service.payment.url:http://localhost:8082}") String paymentServiceUrl) {
-        return builder.routes()
-                // Order Service Route
-                .route("order-service-route", r -> r
-                        .path("/api/orders/**")
-                        .filters(f -> f
-                                .stripPrefix(1) // Remove /api prefix before forwarding
-                                .filter(rateLimitGatewayFilter.apply(createRateLimitConfig(50, 60))) // 50 requests per minute
-                                .circuitBreaker(config -> config
-                                        .setName("order-service-cb")
-                                        .setFallbackUri("forward:/fallback/order-service")
-                                )
-                        )
-                        .uri(orderServiceUrl)
-                )
+    @Order(1)
+    public GlobalFilter customRateLimitFilter() {
+        // Apply different rate limits based on path
+        return (exchange, chain) -> {
+            String path = exchange.getRequest().getPath().value();
 
-                // Payment Service Route
-                .route("payment-service-route", r -> r
-                        .path("/api/payments/**")
-                        .filters(f -> f
-                                .stripPrefix(1) // Remove /api prefix before forwarding
-                                .filter(rateLimitGatewayFilter.apply(createRateLimitConfig(30, 60))) // 30 requests per minute (more restrictive for payments)
-                                .circuitBreaker(config -> config
-                                        .setName("payment-service-cb")
-                                        .setFallbackUri("forward:/fallback/payment-service")
-                                )
-                        )
-                        .uri(paymentServiceUrl)
-                )
+            RateLimitGatewayFilter.Config config;
+            if (path.startsWith("/api/payments")) {
+                // More restrictive for payments
+                config = createRateLimitConfig(30, 60);
+            } else {
+                // Default rate limit
+                config = createRateLimitConfig(50, 60);
+            }
 
-                // Health check route for gateway itself
-                .route("gateway-health", r -> r
-                        .path("/health")
-                        .uri("http://localhost:8080/actuator/health")
-                )
-
-                .build();
+            return rateLimitGatewayFilter.apply(config)
+                    .filter(exchange, chain);
+        };
     }
 
     private RateLimitGatewayFilter.Config createRateLimitConfig(int maxRequests, int windowSeconds) {

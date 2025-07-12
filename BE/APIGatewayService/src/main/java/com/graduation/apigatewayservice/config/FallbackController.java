@@ -3,10 +3,7 @@ package com.graduation.apigatewayservice.config;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -17,8 +14,7 @@ import java.util.Map;
 @RequestMapping("/fallback")
 public class FallbackController {
 
-    @GetMapping("/order-service")
-    @PostMapping("/order-service")
+    @RequestMapping(value = "/order-service", method = {RequestMethod.GET, RequestMethod.POST})
     public ResponseEntity<Map<String, Object>> orderServiceFallback() {
         log.warn("Order Service fallback triggered");
 
@@ -29,8 +25,7 @@ public class FallbackController {
                 ));
     }
 
-    @GetMapping("/payment-service")
-    @PostMapping("/payment-service")
+    @RequestMapping(value = "/product-service", method = {RequestMethod.GET, RequestMethod.POST})
     public ResponseEntity<Map<String, Object>> paymentServiceFallback() {
         log.warn("Payment Service fallback triggered");
 

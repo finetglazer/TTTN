@@ -8,7 +8,7 @@
         <version>3.4.5</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.payment</groupId>
+    <groupId>com.graduation</groupId>
     <artifactId>APIGatewayService</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>APIGatewayService</name>
@@ -17,13 +17,21 @@
     <properties>
         <java.version>17</java.version>
         <spring-cloud.version>2024.0.0</spring-cloud.version>
+        <!-- Fix main class path -->
+        <start-class>com.graduation.apigatewayservice.ApiGatewayServiceApplication</start-class>
     </properties>
 
     <dependencies>
-        <!-- Spring Cloud Gateway -->
+        <!-- Spring Cloud Gateway - EXPLICIT VERSION -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-gateway</artifactId>
+        </dependency>
+
+        <!-- CRITICAL: WebFlux for Reactive -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
 
         <!-- Spring Boot Actuator for health checks -->
@@ -38,12 +46,24 @@
             <artifactId>spring-cloud-starter-circuitbreaker-reactor-resilience4j</artifactId>
         </dependency>
 
+        <!-- Redis Reactive (from your working pom) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+        </dependency>
+
+        <!-- Commons Pool for Redis connections -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.18.30</version>
-            <optional>true</optional>
+            <scope>provided</scope>
         </dependency>
 
         <!-- Test dependencies -->
@@ -76,6 +96,7 @@
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
+                            <version>1.18.30</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
@@ -84,6 +105,8 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <!-- Fix main class -->
+                    <mainClass>com.graduation.apigatewayservice.ApiGatewayServiceApplication</mainClass>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>
@@ -91,6 +114,13 @@
                         </exclude>
                     </excludes>
                 </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
