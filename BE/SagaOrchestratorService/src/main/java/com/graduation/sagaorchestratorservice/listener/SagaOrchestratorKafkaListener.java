@@ -40,15 +40,22 @@ public class SagaOrchestratorKafkaListener {
             log.info("Received order event type: {} for saga: {} messageId: {}",
                     eventType, sagaId, messageId);
 
-            // Validate required fields
-            if (sagaId == null || sagaId.trim().isEmpty()) {
-                log.warn("Received order event without sagaId, ignoring: {}", event);
-                ack.acknowledge();
-                return;
+            // In consumeOrderEvents method, add this case:
+            switch (eventType) {
+                case "ORDER_CREATED":
+                    handleOrderCreatedEvent(event);
+                    break;
+                case "ORDER_STATUS_UPDATED_CONFIRMED":
+                case "ORDER_STATUS_UPDATE_FAILED":
+                case "ORDER_STATUS_UPDATED_DELIVERED":
+                case "ORDER_CANCELLED":
+                case "ORDER_CANCELLATION_FAILED":
+                    orderPurchaseSagaService.handleEventMessage(event);
+                    break;
+                default:
+                    log.debug("Unhandled order event type: {}", eventType);
+                    break;
             }
-
-            // Route event to saga service
-            orderPurchaseSagaService.handleEventMessage(event);
 
             // Acknowledge the message
             ack.acknowledge();
@@ -244,6 +251,31 @@ public class SagaOrchestratorKafkaListener {
         } catch (Exception e) {
             log.error("Error processing health check message: {}", e.getMessage(), e);
             ack.acknowledge(); // Still acknowledge to avoid blocking
+        }
+    }
+
+    /**
+     * Handle ORDER_CREATED event to start new saga
+     */
+    private void handleOrderCreatedEvent(Map<String, Object> event) {
+        try {
+            Long orderId = Long.valueOf(event.get("orderId").toString());
+            String userId = (String) event.get("userId");
+            String userEmail = (String) event.get("userEmail");
+            String userName = (String) event.get("userName");
+            String orderDescription = (String) event.get("orderDescription");
+            java.math.BigDecimal totalAmount = new java.math.BigDecimal(event.get("totalAmount").toString());
+
+            log.info("Starting saga for order created event: orderId={}, userId={}, amount={}",
+                    orderId, userId, totalAmount);
+
+            orderPurchaseSagaService.startSaga(userId, orderId, userEmail, userName, orderDescription, totalAmount);
+
+            log.info("Successfully started saga for order: {}", orderId);
+
+        } catch (Exception e) {
+            log.error("Error handling ORDER_CREATED event: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to start saga for ORDER_CREATED event", e);
         }
     }
 }

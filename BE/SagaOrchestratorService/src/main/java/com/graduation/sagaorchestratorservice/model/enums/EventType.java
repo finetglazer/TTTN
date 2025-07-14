@@ -16,6 +16,7 @@ public enum EventType {
     PAYMENT_CANCELLATION_FAILED("Payment cancellation failed"),
 
     // Order Service Events
+    ORDER_CREATED("Order created successfully"),
     ORDER_STATUS_UPDATED_CONFIRMED("Order status updated to confirmed"),
     ORDER_STATUS_UPDATE_FAILED("Order status update failed"),
     ORDER_STATUS_UPDATED_DELIVERED("Order status updated to delivered"),
@@ -37,6 +38,8 @@ public enum EventType {
      */
     public CommandType getAssociatedCommandType() {
         return switch (this) {
+            case ORDER_CREATED ->
+                    CommandType.START_SAGA;
             case PAYMENT_PROCESSED, PAYMENT_FAILED ->
                     CommandType.PAYMENT_PROCESS;
             case PAYMENT_CANCELLED, PAYMENT_CANCELLATION_FAILED ->

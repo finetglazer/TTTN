@@ -1,0 +1,55 @@
+### Test SagaOrchestratorService Health
+GET http://localhost:8083/api/sagas/health
+Accept: application/json
+
+### Test SagaOrchestratorService Test Endpoint
+GET http://localhost:8083/api/sagas/test
+Accept: application/json
+
+### Get all active sagas
+GET http://localhost:8083/api/sagas/active
+Accept: application/json
+
+### Get saga by saga ID (replace with actual saga ID)
+GET http://localhost:8083/api/sagas/ORDER_PURCHASE-1642678800000-a1b2c3d4-e5f6-7890-abcd-ef1234567890
+Accept: application/json
+
+### Get saga by order ID (replace with actual order ID)
+GET http://localhost:8083/api/sagas/order/1
+Accept: application/json
+
+### Get sagas by user ID
+GET http://localhost:8083/api/sagas/user/user123
+Accept: application/json
+
+### Cancel saga by saga ID (replace with actual saga ID)
+POST http://localhost:8083/api/sagas/ORDER_PURCHASE-1642678800000-a1b2c3d4-e5f6-7890-abcd-ef1234567890/cancel
+Content-Type: application/json
+
+### Combined workflow test:
+### 1. First create an order (this will trigger saga)
+POST http://localhost:8081/api/orders
+Content-Type: application/json
+
+{
+  "userId": "workflow_test_user",
+  "userEmail": "workflow@example.com",
+  "userName": "Workflow Test User",
+  "orderDescription": "End-to-end workflow test order",
+  "totalAmount": 999.99
+}
+
+###
+### 2. Then check the order was created
+GET http://localhost:8081/api/orders/user/workflow_test_user
+Accept: application/json
+
+###
+### 3. Check if saga was started for the user
+GET http://localhost:8083/api/sagas/user/workflow_test_user
+Accept: application/json
+
+###
+### 4. Check saga health status
+GET http://localhost:8083/api/sagas/health
+Accept: application/json
