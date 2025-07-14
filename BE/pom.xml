@@ -13,6 +13,7 @@
         <module>APIGatewayService</module>
         <module>OrderService</module>
         <module>PaymentService</module>
+        <module>SagaOrchestratorService</module>
     </modules>
 
     <dependencyManagement>

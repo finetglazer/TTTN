@@ -29,6 +29,21 @@ services:
     networks:
       - backend-network
 
+  # PostgreSQL for SagaOrchestratorService
+  postgres-sagaservice:
+    image: postgres:15-alpine
+    container_name: postgres-sagaservice
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: saga_service_db
+    ports:
+      - "5434:5432"  # Different host port to avoid conflict
+    volumes:
+      - postgres_saga_data:/var/lib/postgresql/data
+    networks:
+      - backend-network
+
   # Redis Cache
   redis-cache:
     image: redis:7-alpine
@@ -150,6 +165,28 @@ services:
     networks:
       - backend-network
 
+  # Saga Orchestrator Service
+  saga-orchestrator-service:
+    build:
+      context: ./SagaOrchestratorService
+      dockerfile: Dockerfile
+    container_name: saga-orchestrator-service
+    ports:
+      - "8083:8083"  # Exposed for monitoring and health checks
+    environment:
+      SPRING_PROFILES_ACTIVE: product
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-sagaservice:5432/saga_service_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      - postgres-sagaservice
+      - kafka
+      - order-service
+      - payment-service
+    networks:
+      - backend-network
+
 # Define the network properly
 networks:
   backend-network:
@@ -158,3 +195,4 @@ networks:
 volumes:
   postgres_order_data:
   postgres_payment_data:
+  postgres_saga_data:
