@@ -77,7 +77,7 @@ public class OrderService {
             event.put("createdAt", order.getCreatedAt().toString());
 
             // Publish to saga events topic
-            kafkaTemplate.send("saga.events", order.getId().toString(), event);
+            kafkaTemplate.send("order.events", order.getId().toString(), event);
 
             log.info("Published ORDER_CREATED event for order: {} to trigger saga", order.getId());
 
