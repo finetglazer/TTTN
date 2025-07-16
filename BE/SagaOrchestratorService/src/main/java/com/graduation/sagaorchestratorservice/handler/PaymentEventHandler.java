@@ -33,6 +33,18 @@ public class PaymentEventHandler {
             return;
         }
 
+//        switch (eventType) {
+//            case "PAYMENT_PROCESSED":
+//                orhandlePaymentProcessedEvent(event);
+//                break;
+//            case "PAYMENT_FAILED":
+//                handlePaymentFailedEvent(event);
+//                break;
+//            default:
+//                log.debug("Unhandled payment event type: {}", eventType);
+//                break;
+//        }
+
         // Route event to saga service
         orderPurchaseSagaService.handleEventMessage(event);
     }

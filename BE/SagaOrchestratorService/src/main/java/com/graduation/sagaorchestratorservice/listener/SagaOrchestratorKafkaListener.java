@@ -60,7 +60,7 @@ public class SagaOrchestratorKafkaListener {
 
     /**
      * Listen to payment events from Payment Service
-     * Handles events like: PAYMENT_PROCESSED, PAYMENT_FAILED, PAYMENT_CANCELLED, PAYMENT_CANCELLATION_FAILED
+     * Handles events like: PAYMENT_PROCESSED, PAYMENT_FAILED, PAYMENT_REVERSED, PAYMENT_CANCELLATION_FAILED
      */
     @KafkaListener(
             topics = "${kafka.topics.payment-events}",

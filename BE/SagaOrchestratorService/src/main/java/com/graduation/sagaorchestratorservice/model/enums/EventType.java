@@ -12,8 +12,8 @@ public enum EventType {
     // Payment Service Events
     PAYMENT_PROCESSED("Payment processed successfully"),
     PAYMENT_FAILED("Payment processing failed"),
-    PAYMENT_CANCELLED("Payment cancelled/refunded"),
-    PAYMENT_CANCELLATION_FAILED("Payment cancellation failed"),
+    PAYMENT_REVERSED("Payment cancelled/refunded"),
+    PAYMENT_REVERSED_FAILED("Payment cancellation failed"),
 
     // Order Service Events
     ORDER_CREATED("Order created successfully"),
@@ -42,8 +42,8 @@ public enum EventType {
                     CommandType.START_SAGA;
             case PAYMENT_PROCESSED, PAYMENT_FAILED ->
                     CommandType.PAYMENT_PROCESS;
-            case PAYMENT_CANCELLED, PAYMENT_CANCELLATION_FAILED ->
-                    CommandType.PAYMENT_CANCEL;
+            case PAYMENT_REVERSED, PAYMENT_REVERSED_FAILED ->
+                    CommandType.PAYMENT_REVERSE;
             case ORDER_STATUS_UPDATED_CONFIRMED, ORDER_STATUS_UPDATE_FAILED ->
                     CommandType.ORDER_UPDATE_CONFIRMED;
             case ORDER_STATUS_UPDATED_DELIVERED ->
@@ -60,7 +60,7 @@ public enum EventType {
      */
     public boolean isSuccessEvent() {
         return this == PAYMENT_PROCESSED ||
-                this == PAYMENT_CANCELLED ||
+                this == PAYMENT_REVERSED ||
                 this == ORDER_STATUS_UPDATED_CONFIRMED ||
                 this == ORDER_STATUS_UPDATED_DELIVERED ||
                 this == ORDER_CANCELLED ||

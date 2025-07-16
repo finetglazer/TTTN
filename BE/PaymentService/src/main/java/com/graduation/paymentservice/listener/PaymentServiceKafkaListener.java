@@ -1,5 +1,6 @@
 package com.graduation.paymentservice.listener;
 
+import com.graduation.paymentservice.service.PaymentCommandHandlerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -7,7 +8,6 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
 import java.util.Map;
 
 /**
@@ -19,12 +19,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PaymentServiceKafkaListener {
 
-    // TODO: Inject PaymentCommandHandlerService when implemented
-    // private final PaymentCommandHandlerService commandHandlerService;
+    private final PaymentCommandHandlerService commandHandlerService;
 
     /**
      * Listen to payment commands from Saga Orchestrator
-     * Handles commands like: PAYMENT_PROCESS, PAYMENT_CANCEL
+     * Handles commands like: PAYMENT_PROCESS, PAYMENT_REVERSE
      */
     @KafkaListener(
             topics = "${kafka.topics.payment-commands}",
@@ -43,10 +42,11 @@ public class PaymentServiceKafkaListener {
             // Route to appropriate handler based on command type
             switch (commandType) {
                 case "PAYMENT_PROCESS":
-//                    handleProcessPayment(command);
+                    commandHandlerService.handleProcessPayment(command);
                     break;
-                case "PAYMENT_CANCEL":
-//                    handleCancelPayment(command);
+                case "PAYMENT_REVERSE":
+                    // TODO: Implement cancel payment handler
+                    log.warn("Payment cancellation not yet implemented");
                     break;
                 default:
                     log.warn("Unknown payment command type: {} for saga: {}", commandType, sagaId);

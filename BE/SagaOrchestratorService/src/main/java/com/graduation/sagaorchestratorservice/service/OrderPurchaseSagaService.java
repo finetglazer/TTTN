@@ -347,7 +347,7 @@ public class OrderPurchaseSagaService {
      */
     private String getTopicForCommand(CommandType commandType) {
         return switch (commandType) {
-            case PAYMENT_PROCESS, PAYMENT_CANCEL -> paymentCommandsTopic;
+            case PAYMENT_PROCESS, PAYMENT_REVERSE -> paymentCommandsTopic;
             case ORDER_UPDATE_CONFIRMED, ORDER_UPDATE_DELIVERED, ORDER_CANCEL -> orderCommandsTopic;
             default -> "saga.dlq"; // Dead letter queue fallback
         };

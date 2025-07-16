@@ -27,21 +27,29 @@ public class OrderEventHandler {
 
         log.debug("Processing order event type: {} for saga: {}", eventType, sagaId);
 
-        switch (eventType) {
-            case "ORDER_CREATED":
-                handleOrderCreatedEvent(event);
-                break;
-            case "ORDER_STATUS_UPDATED_CONFIRMED":
-            case "ORDER_STATUS_UPDATE_FAILED":
-            case "ORDER_STATUS_UPDATED_DELIVERED":
-            case "ORDER_CANCELLED":
-            case "ORDER_CANCELLATION_FAILED":
-                orderPurchaseSagaService.handleEventMessage(event);
-                break;
-            default:
-                log.debug("Unhandled order event type: {}", eventType);
-                break;
+//        switch (eventType) {
+//            case "ORDER_CREATED":
+//                handleOrderCreatedEvent(event);
+//                break;
+//            case "ORDER_STATUS_UPDATED_CONFIRMED":
+//            case "ORDER_STATUS_UPDATE_FAILED":
+//
+//            case "ORDER_STATUS_UPDATED_DELIVERED":
+//            case "ORDER_CANCELLED":
+//            case "ORDER_CANCELLATION_FAILED":
+//                orderPurchaseSagaService.handleEventMessage(event);
+//                break;
+//            default:
+//                log.debug("Unhandled order event type: {}", eventType);
+//                break;
+//        }
+
+        if (eventType.equals("ORDER_CREATED")) {
+            handleOrderCreatedEvent(event);
+        } else {
+            orderPurchaseSagaService.handleEventMessage(event);
         }
+
     }
 
     /**

@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.graduation.sagaorchestratorservice.model.enums.OrderPurchaseSagaStep;
 import com.graduation.sagaorchestratorservice.model.enums.SagaStatus;
 import jakarta.persistence.*;
@@ -306,6 +308,10 @@ public class OrderPurchaseSagaState {
     @PrePersist
     @PreUpdate
     public void prePersist() {
+        // Configure ObjectMapper once, properly
+        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
         if (completedSteps != null) {
             try {
                 completedStepsJson = objectMapper.writeValueAsString(completedSteps);

@@ -15,7 +15,7 @@ public enum OrderPurchaseSagaStep {
     COMPLETE_SAGA(3, "Complete saga successfully", CommandType.COMPLETE_SAGA),
 
     // Compensation steps (reverse order)
-    CANCEL_PAYMENT(101, "Cancel/refund payment", CommandType.PAYMENT_CANCEL),
+    CANCEL_PAYMENT(101, "Cancel/refund payment", CommandType.PAYMENT_REVERSE),
     CANCEL_ORDER(102, "Cancel order", CommandType.ORDER_CANCEL);
 
     private final int stepNumber;

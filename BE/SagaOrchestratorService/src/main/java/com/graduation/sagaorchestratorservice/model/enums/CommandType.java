@@ -11,7 +11,7 @@ public enum CommandType {
 
     // Payment Service Commands
     PAYMENT_PROCESS("Process payment for order"),
-    PAYMENT_CANCEL("Cancel/refund payment"),
+    PAYMENT_REVERSE("Cancel/refund payment"),
 
     // Order Service Commands
     ORDER_UPDATE_CONFIRMED("Update order status to confirmed"),
@@ -45,6 +45,6 @@ public enum CommandType {
      * Check if this is a compensation command
      */
     public boolean isCompensationCommand() {
-        return this == PAYMENT_CANCEL || this == ORDER_CANCEL;
+        return this == PAYMENT_REVERSE || this == ORDER_CANCEL;
     }
 }

@@ -10,9 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -92,10 +90,10 @@ public class OrderService {
      * Update order status (called by saga)
      */
     @Transactional
-    public Order updateOrderStatus(Long orderId, OrderStatus newStatus, String reason, String sagaId) {
+    public void updateOrderStatus(Long orderId, OrderStatus newStatus, String reason, String sagaId) {
         log.info("Updating order {} status to {} for saga: {}", orderId, newStatus, sagaId);
 
-        Optional<Order> optionalOrder = orderRepository.findById(orderId);
+        Optional<Order> optionalOrder = orderRepository.findByIdWithHistories(orderId);
         if (optionalOrder.isEmpty()) {
             throw new RuntimeException("Order not found: " + orderId);
         }
@@ -110,10 +108,8 @@ public class OrderService {
         // Update status with history
         order.updateStatus(newStatus, reason, "SAGA_ORCHESTRATOR");
 
-        Order updatedOrder = orderRepository.save(order);
+        orderRepository.save(order);
         log.info("Order {} status updated to {} successfully", orderId, newStatus);
-
-        return updatedOrder;
     }
 
     /**
@@ -143,29 +139,40 @@ public class OrderService {
      * Handle order update confirmed command
      */
     public void handleUpdateOrderConfirmed(Map<String, Object> command) {
-        try {
-            String sagaId = (String) command.get("sagaId");
-            Long orderId = Long.valueOf(command.get("orderId").toString());
-            String reason = (String) command.getOrDefault("reason", "Payment processed successfully");
 
-            log.info("Updating order {} to CONFIRMED for saga: {}", orderId, sagaId);
-
-            // TODO: Inject OrderService and call updateOrderStatus
-            // orderService.updateOrderStatus(orderId, OrderStatus.CONFIRMED, reason, sagaId);
-
-            // Publish success event
-            publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATED_CONFIRMED", true,
-                    "Order status updated to CONFIRMED", null);
-
-        } catch (Exception e) {
-            log.error("Error updating order to confirmed: {}", e.getMessage(), e);
-
-            // Publish failure event
-            String sagaId = (String) command.get("sagaId");
-            Long orderId = Long.valueOf(command.get("orderId").toString());
-            publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATE_FAILED", false,
-                    null, e.getMessage());
+        Map<String, Object> payload = (Map<String, Object>) command.get("payload");
+        if (payload == null) {
+            log.info("payload is null");
+            log.error("Command payload is null for sagaId: {}", command.get("sagaId"));
+            publishOrderEvent((String) command.get("sagaId"), null, "ORDER_STATUS_UPDATE_FAILED", false,
+                    null, "Invalid command format: missing payload");
         }
+
+        Long orderId = Long.valueOf(payload.get("orderId").toString());
+        String sagaId = command.get("sagaId").toString();
+        String reason = (String) payload.getOrDefault("reason", "Order confirmed successfully");
+
+        publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATE_FAILED", false,
+                null, "hehe");
+
+//        try {
+////            String sagaId = (String) command.get("sagaId");
+////            Long orderId = Long.valueOf(command.get("orderId").toString());
+////            String reason = (String) command.getOrDefault("reason", "Payment processed successfully");
+//
+//            log.info("Updating order {} to CONFIRMED for saga: {}", orderId, sagaId);
+//            updateOrderStatus(orderId, OrderStatus.CONFIRMED, reason, sagaId);
+//
+//            // Publish success event
+//            publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATED_CONFIRMED", true,
+//                    "Order status updated to CONFIRMED", null);
+//
+//        } catch (Exception e) {
+//            log.error("Error updating order to confirmed: {}", e.getMessage(), e);
+//
+//            publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATE_FAILED", false,
+//                    null, e.getMessage());
+//        }
     }
 
     /**
@@ -202,9 +209,12 @@ public class OrderService {
      */
     public void handleCancelOrder(Map<String, Object> command) {
         try {
+            // Extract payload first
+            Map<String, Object> payload = (Map<String, Object>) command.get("payload");
+
             String sagaId = (String) command.get("sagaId");
-            Long orderId = Long.valueOf(command.get("orderId").toString());
-            String reason = (String) command.getOrDefault("reason", "Order cancelled by saga");
+            Long orderId = Long.valueOf(payload.get("orderId").toString());
+            String reason = (String) payload.getOrDefault("reason", "Order cancelled by saga");
 
             log.info("Cancelling order {} for saga: {}", orderId, sagaId);
 
@@ -220,7 +230,8 @@ public class OrderService {
 
             // Publish failure event
             String sagaId = (String) command.get("sagaId");
-            Long orderId = Long.valueOf(command.get("orderId").toString());
+            Map<String, Object> payload = (Map<String, Object>) command.get("payload");
+            Long orderId = Long.valueOf(payload.get("orderId").toString());
             publishOrderEvent(sagaId, orderId, "ORDER_CANCELLATION_FAILED", false,
                     null, e.getMessage());
         }
@@ -244,8 +255,7 @@ public class OrderService {
                 log.error("Order event failure: {}", errorMessage);
             }
 
-            // When KafkaTemplate is injected, this would be:
-            /*
+
             Map<String, Object> event = new HashMap<>();
             event.put("messageId", "ORDER_EVT_" + System.currentTimeMillis());
             event.put("sagaId", sagaId);
@@ -261,7 +271,7 @@ public class OrderService {
             }
 
             kafkaTemplate.send("order.events", sagaId, event);
-            */
+
 
         } catch (Exception e) {
             log.error("Error publishing order event: {}", e.getMessage(), e);
