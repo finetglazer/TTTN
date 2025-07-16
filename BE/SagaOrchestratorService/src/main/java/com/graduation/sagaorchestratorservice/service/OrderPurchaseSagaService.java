@@ -45,6 +45,9 @@ public class OrderPurchaseSagaService {
     @Value("${kafka.topics.payment-commands}")
     private String paymentCommandsTopic;
 
+    @Value("${saga.compensation.max-retries:3}")
+    private int defaultMaxCompensationRetries;
+
     /**
      * Start a new order purchase saga
      * Called when an order is created and needs payment processing
@@ -230,8 +233,14 @@ public class OrderPurchaseSagaService {
         // Record monitoring
         monitoringService.recordMessageFailed(saga.getSagaId(), eventType, errorMessage);
 
-        // Handle failure
-        handleStepFailure(saga, errorMessage != null ? errorMessage : "Step failed without specific reason");
+        // Check if this is a compensation step failure
+        if (saga.getStatus() == SagaStatus.COMPENSATING) {
+            // Handle compensation step failure
+            handleCompensationStepFailure(saga, errorMessage != null ? errorMessage : "Compensation step failed");
+        } else {
+            // Handle normal step failure
+            handleStepFailure(saga, errorMessage != null ? errorMessage : "Step failed without specific reason");
+        }
     }
 
     /**
@@ -275,6 +284,9 @@ public class OrderPurchaseSagaService {
         OrderPurchaseSagaStep currentStep = saga.getCurrentStep();
         log.debug("Compensation step [{}] completed for saga: {}", currentStep, saga.getSagaId());
 
+        // Add compensation step to completed steps
+        saga.getCompletedSteps().add(currentStep.name());
+
         // Get next compensation step
         OrderPurchaseSagaStep nextStep = currentStep.getNextCompensationStep();
 
@@ -289,6 +301,45 @@ public class OrderPurchaseSagaService {
             saga.setLastUpdatedTime(Instant.now());
             saga.addEvent(SagaEvent.of("COMPENSATION_STEP",
                     "Moving to compensation step: " + nextStep.getDescription()));
+        }
+    }
+
+    /**
+     * Handle failed compensation step
+     */
+    private void handleCompensationStepFailure(OrderPurchaseSagaState saga, String reason) {
+        log.warn("🚨 Compensation step FAILED for saga [{}]: {}", saga.getSagaId(), reason);
+
+        // Retry compensation or mark as compensation failed
+        if (saga.getCompensationRetryCount() < saga.getMaxCompensationRetries()) {
+            // Retry compensation step
+            saga.incrementCompensationRetryCount();
+            saga.addEvent(SagaEvent.of("COMPENSATION_RETRY",
+                    "Retrying compensation step " + saga.getCurrentStep() + " (attempt " + saga.getCompensationRetryCount() + ")"));
+
+            log.info("🔄 Retrying compensation step for saga [{}], attempt {}/{}",
+                    saga.getSagaId(), saga.getCompensationRetryCount(), saga.getMaxCompensationRetries());
+
+            sagaRepository.save(saga);
+
+            // Retry the current compensation step
+            processNextStep(saga);
+
+        } else {
+            // Mark as compensation failed - manual intervention needed
+            log.error("❌ COMPENSATION FAILED for saga [{}] after {} retries. Manual intervention required!",
+                    saga.getSagaId(), saga.getMaxCompensationRetries());
+
+            saga.setStatus(SagaStatus.COMPENSATION_FAILED);
+            saga.setEndTime(Instant.now());
+            saga.addEvent(SagaEvent.of("COMPENSATION_FAILED",
+                    "Compensation failed after " + saga.getMaxCompensationRetries() + " retries: " + reason));
+
+            sagaRepository.save(saga);
+
+            // Record the compensation failure
+            monitoringService.recordSagaFailed(saga.getSagaId(),
+                    "Compensation failed after retries: " + reason);
         }
     }
 

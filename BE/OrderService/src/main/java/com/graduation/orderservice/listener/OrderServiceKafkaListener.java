@@ -1,6 +1,6 @@
 package com.graduation.orderservice.listener;
 
-import com.graduation.orderservice.service.OrderService;
+import com.graduation.orderservice.service.OrderCommandHandlerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -22,7 +22,7 @@ public class OrderServiceKafkaListener {
     // TODO: Inject OrderCommandHandlerService when implemented
     // private final OrderCommandHandlerService commandHandlerService;
 
-    private final OrderService orderService;
+    private final OrderCommandHandlerService orderCommandHandlerService;
 
     /**
      * Listen to order commands from Saga Orchestrator
@@ -45,13 +45,13 @@ public class OrderServiceKafkaListener {
             // Route to appropriate handler based on command type
             switch (commandType) {
                 case "ORDER_UPDATE_CONFIRMED":
-                    orderService.handleUpdateOrderConfirmed(command);
+                    orderCommandHandlerService.handleUpdateOrderConfirmed(command);
                     break;
                 case "ORDER_UPDATE_DELIVERED":
-                    orderService.handleUpdateOrderDelivered(command);
+                    orderCommandHandlerService.handleUpdateOrderDelivered(command);
                     break;
                 case "ORDER_CANCEL":
-                    orderService.handleCancelOrder(command);
+                    orderCommandHandlerService.handleCancelOrder(command);
                     break;
                 default:
                     log.warn("Unknown order command type: {} for saga: {}", commandType, sagaId);

@@ -21,6 +21,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT o FROM Order o LEFT JOIN FETCH o.orderHistories WHERE o.id = :id")
     Optional<Order> findByIdWithHistories(@Param("id") Long id);
 
+
     /**
      * Find orders by user ID
      */

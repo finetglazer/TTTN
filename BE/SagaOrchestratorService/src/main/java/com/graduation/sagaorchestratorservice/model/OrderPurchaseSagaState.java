@@ -9,10 +9,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.graduation.sagaorchestratorservice.model.enums.OrderPurchaseSagaStep;
 import com.graduation.sagaorchestratorservice.model.enums.SagaStatus;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
@@ -110,6 +107,20 @@ public class OrderPurchaseSagaState {
     @Builder.Default
     private Integer maxRetries = 3;
 
+    // Add getter and increment method:
+    @Getter
+    @Column(name = "compensation_retry_count")
+    private int compensationRetryCount = 0;
+
+    @Column(name = "max_compensation_retries")
+    private int maxCompensationRetries = 3;
+
+    public void incrementCompensationRetryCount() {
+        this.compensationRetryCount++;
+        this.lastUpdatedTime = Instant.now();
+    }
+
+
     @Transient
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -118,6 +129,8 @@ public class OrderPurchaseSagaState {
 
     @Transient
     private List<SagaEvent> sagaEvents;
+
+
 
     /**
      * Factory method to initiate a new order purchase saga
@@ -155,6 +168,7 @@ public class OrderPurchaseSagaState {
     public void moveToNextStep() {
         // Add current step to completed steps
         if (currentStep != null && !currentStep.isCompensationStep()) {
+            log.info("Adding completed step: {} for saga: {}", currentStep.name(), sagaId);
             getCompletedSteps().add(currentStep.name());
         }
 
@@ -210,6 +224,7 @@ public class OrderPurchaseSagaState {
      * Complete compensation process
      */
     public void completeCompensation() {
+        log.info("✅ Compensation completed for saga [{}]", sagaId);
         status = SagaStatus.COMPENSATION_COMPLETED;
         currentStep = OrderPurchaseSagaStep.COMPLETE_SAGA;
         endTime = Instant.now();

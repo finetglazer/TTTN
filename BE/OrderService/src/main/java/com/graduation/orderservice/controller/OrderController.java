@@ -3,7 +3,7 @@ package com.graduation.orderservice.controller;
 import com.graduation.orderservice.model.Order;
 import com.graduation.orderservice.payload.CreateOrderRequest;
 import com.graduation.orderservice.repository.OrderRepository;
-import com.graduation.orderservice.service.OrderService;
+import com.graduation.orderservice.service.OrderCommandHandlerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -12,12 +12,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Digits;
-import java.math.BigDecimal;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,7 +27,7 @@ import java.util.Optional;
 @Validated
 public class OrderController {
 
-    private final OrderService orderService;
+    private final OrderCommandHandlerService orderCommandHandlerService;
     private final OrderRepository orderRepository;
 
     /**
@@ -44,7 +39,7 @@ public class OrderController {
         try {
             log.info("Creating order for user: {} with amount: {}", request.getUserId(), request.getTotalAmount());
 
-            Order createdOrder = orderService.createOrder(
+            Order createdOrder = orderCommandHandlerService.createOrder(
                     request.getUserId(),
                     request.getUserEmail(),
                     request.getUserName(),

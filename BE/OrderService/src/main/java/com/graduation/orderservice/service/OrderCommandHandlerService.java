@@ -20,7 +20,7 @@ import java.util.Optional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class OrderService {
+public class OrderCommandHandlerService {
 
     private final OrderRepository orderRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
@@ -119,19 +119,17 @@ public class OrderService {
     public void cancelOrder(Long orderId, String reason, String sagaId) {
         log.info("Cancelling order {} for saga: {}", orderId, sagaId);
 
-        Optional<Order> optionalOrder = orderRepository.findById(orderId);
+        // Use a custom query to fetch with histories
+        Optional<Order> optionalOrder = orderRepository.findByIdWithHistories(orderId);
         if (optionalOrder.isEmpty()) {
             throw new RuntimeException("Order not found: " + orderId);
         }
 
         Order order = optionalOrder.get();
-
-        // Cancel the order
         order.cancel(reason, "SAGA_COMPENSATION");
 
         Order cancelledOrder = orderRepository.save(order);
         log.info("Order {} cancelled successfully", orderId);
-
     }
 
     /**
@@ -151,27 +149,20 @@ public class OrderService {
         String sagaId = command.get("sagaId").toString();
         String reason = (String) payload.getOrDefault("reason", "Order confirmed successfully");
 
-        publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATE_FAILED", false,
-                null, "hehe");
+        try {
+            log.info("Updating order {} to CONFIRMED for saga: {}", orderId, sagaId);
+            updateOrderStatus(orderId, OrderStatus.CONFIRMED, reason, sagaId);
 
-//        try {
-////            String sagaId = (String) command.get("sagaId");
-////            Long orderId = Long.valueOf(command.get("orderId").toString());
-////            String reason = (String) command.getOrDefault("reason", "Payment processed successfully");
-//
-//            log.info("Updating order {} to CONFIRMED for saga: {}", orderId, sagaId);
-//            updateOrderStatus(orderId, OrderStatus.CONFIRMED, reason, sagaId);
-//
-//            // Publish success event
-//            publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATED_CONFIRMED", true,
-//                    "Order status updated to CONFIRMED", null);
-//
-//        } catch (Exception e) {
-//            log.error("Error updating order to confirmed: {}", e.getMessage(), e);
-//
-//            publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATE_FAILED", false,
-//                    null, e.getMessage());
-//        }
+            // Publish success event
+            publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATED_CONFIRMED", true,
+                    "Order status updated to CONFIRMED", null);
+
+        } catch (Exception e) {
+            log.error("Error updating order to confirmed: {}", e.getMessage(), e);
+
+            publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATE_FAILED", false,
+                    null, e.getMessage());
+        }
     }
 
     /**

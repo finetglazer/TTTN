@@ -36,7 +36,12 @@ public enum SagaStatus {
     /**
      * Compensation process completed
      */
-    COMPENSATION_COMPLETED("Compensation completed");
+    COMPENSATION_COMPLETED("Compensation completed"),
+
+    /**
+     * Compensation failed - manual intervention needed
+     */
+    COMPENSATION_FAILED("Compensation failed - manual intervention required");
 
     private final String description;
 
@@ -55,7 +60,7 @@ public enum SagaStatus {
      * Check if saga is in a final state
      */
     public boolean isFinal() {
-        return this == COMPLETED || this == COMPENSATION_COMPLETED;
+        return this == COMPLETED || this == COMPENSATION_COMPLETED || this == COMPENSATION_FAILED;
     }
 
     /**
@@ -69,7 +74,7 @@ public enum SagaStatus {
      * Check if saga failed
      */
     public boolean isFailed() {
-        return this == FAILED || this == COMPENSATION_COMPLETED;
+        return this == FAILED || this == COMPENSATION_COMPLETED || this == COMPENSATION_FAILED;
     }
 
     /**
@@ -81,7 +86,7 @@ public enum SagaStatus {
             case IN_PROGRESS -> new SagaStatus[]{COMPLETED, FAILED};
             case FAILED -> new SagaStatus[]{COMPENSATING};
             case COMPENSATING -> new SagaStatus[]{COMPENSATION_COMPLETED};
-            case COMPLETED, COMPENSATION_COMPLETED -> new SagaStatus[]{}; // Final states
+            case COMPLETED, COMPENSATION_COMPLETED, COMPENSATION_FAILED -> new SagaStatus[]{}; // Final states
         };
     }
 }
