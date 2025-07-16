@@ -116,7 +116,7 @@ public class OrderService {
      * Cancel order (compensation step)
      */
     @Transactional
-    public Order cancelOrder(Long orderId, String reason, String sagaId) {
+    public void cancelOrder(Long orderId, String reason, String sagaId) {
         log.info("Cancelling order {} for saga: {}", orderId, sagaId);
 
         Optional<Order> optionalOrder = orderRepository.findById(orderId);
@@ -132,7 +132,6 @@ public class OrderService {
         Order cancelledOrder = orderRepository.save(order);
         log.info("Order {} cancelled successfully", orderId);
 
-        return cancelledOrder;
     }
 
     /**
@@ -219,7 +218,7 @@ public class OrderService {
             log.info("Cancelling order {} for saga: {}", orderId, sagaId);
 
             // TODO: Inject OrderService and call cancelOrder
-            // orderService.cancelOrder(orderId, reason, sagaId);
+            cancelOrder(orderId, reason, sagaId);
 
             // Publish success event
             publishOrderEvent(sagaId, orderId, "ORDER_CANCELLED", true,

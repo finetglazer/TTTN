@@ -1,6 +1,7 @@
 package com.graduation.sagaorchestratorservice.repository;
 
 import com.graduation.sagaorchestratorservice.model.ProcessedMessage;
+import com.graduation.sagaorchestratorservice.model.enums.ActionType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -85,4 +86,6 @@ public interface ProcessedMessageRepository extends JpaRepository<ProcessedMessa
      */
     @Query("SELECT pm FROM ProcessedMessage pm WHERE pm.sagaId = :sagaId ORDER BY pm.processedAt DESC LIMIT 1")
     Optional<ProcessedMessage> findLatestBySagaId(@Param("sagaId") String sagaId);
+
+    Optional<ProcessedMessage> findBySagaIdAndStepIdAndActionType(String sagaId, Integer stepId, ActionType actionType);
 }

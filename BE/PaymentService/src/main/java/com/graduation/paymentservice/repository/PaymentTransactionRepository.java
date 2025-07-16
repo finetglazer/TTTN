@@ -31,7 +31,7 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     /**
      * Find payment transaction by saga ID
      */
-    Optional<PaymentTransaction> findBySagaId(String sagaId);
+    Optional<PaymentTransaction> findByOrderIdAndSagaId(String orderId, String sagaId);
 
     /**
      * Find payment transaction by transaction reference

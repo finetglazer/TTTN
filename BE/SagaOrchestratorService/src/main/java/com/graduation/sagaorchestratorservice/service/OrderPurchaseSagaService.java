@@ -4,10 +4,7 @@ import com.graduation.sagaorchestratorservice.exception.SagaExecutionException;
 import com.graduation.sagaorchestratorservice.exception.SagaNotFoundException;
 import com.graduation.sagaorchestratorservice.model.OrderPurchaseSagaState;
 import com.graduation.sagaorchestratorservice.model.SagaEvent;
-import com.graduation.sagaorchestratorservice.model.enums.CommandType;
-import com.graduation.sagaorchestratorservice.model.enums.EventType;
-import com.graduation.sagaorchestratorservice.model.enums.OrderPurchaseSagaStep;
-import com.graduation.sagaorchestratorservice.model.enums.SagaStatus;
+import com.graduation.sagaorchestratorservice.model.enums.*;
 import com.graduation.sagaorchestratorservice.repository.OrderPurchaseSagaStateRepository;
 import com.graduation.sagaorchestratorservice.utils.SagaIdGenerator;
 import lombok.RequiredArgsConstructor;
@@ -151,8 +148,11 @@ public class OrderPurchaseSagaService {
 
         // Check idempotency
         String messageId = (String) eventData.get("messageId");
+        ActionType actionType = isCompensationEvent(eventType) ? ActionType.COMPENSATION : ActionType.FORWARD;
+
         if (idempotencyService.isProcessed(messageId, sagaId,
-                saga.getCurrentStep() != null ? saga.getCurrentStep().getStepNumber() : null, eventType)) {
+                saga.getCurrentStep() != null ? saga.getCurrentStep().getStepNumber() : null,
+                eventType, actionType)) {
             log.info("Event [{}] for saga [{}] has already been processed", eventType, sagaId);
             return;
         }
@@ -180,6 +180,10 @@ public class OrderPurchaseSagaService {
             log.error("Error handling event {} for saga {}", eventType, sagaId, e);
             recordEventProcessing(eventData, saga, "Error processing event: " + e.getMessage());
         }
+    }
+    // Helper method to determine if event is compensation
+    private boolean isCompensationEvent(String eventType) {
+        return eventType.contains("FAILED") || eventType.contains("COMPENSATION") || eventType.contains("ROLLBACK");
     }
 
     /**

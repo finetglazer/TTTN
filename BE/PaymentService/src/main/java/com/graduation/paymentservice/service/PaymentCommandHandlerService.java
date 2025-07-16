@@ -87,6 +87,41 @@ public class PaymentCommandHandlerService {
     }
 
     /**
+     * Handle reverse payment command
+     * Simple mock implementation that randomly succeeds or fails
+     */
+    @Transactional
+    public void handleReversePayment(Map<String, Object> command) {
+        String sagaId = (String) command.get("sagaId");
+        Map<String, Object> payload = (Map<String, Object>) command.get("payload");
+
+        String orderId = (String) payload.get("orderId");
+
+        log.info("Reversing payment for order: {}, sagaId: {}", orderId, sagaId);
+
+        try {
+            // Simple mock - randomly succeed or fail
+            boolean success = Math.random() > 0.2; // 80% success rate
+
+            if (success) {
+                publishPaymentEvent(sagaId, orderId, null,
+                        "PAYMENT_REVERSED", true,
+                        "Payment reversed successfully", null);
+            } else {
+                publishPaymentEvent(sagaId, orderId, null,
+                        "PAYMENT_REVERSE_FAILED", false,
+                        null, "Payment reversal failed");
+            }
+
+        } catch (Exception e) {
+            log.error("Error reversing payment for order: {}", orderId, e);
+            publishPaymentEvent(sagaId, orderId, null,
+                    "PAYMENT_REVERSE_FAILED", false,
+                    null, "Technical error: " + e.getMessage());
+        }
+    }
+
+    /**
      * Publish payment event back to saga orchestrator
      */
     private void publishPaymentEvent(String sagaId, String orderId, Long paymentTransactionId,

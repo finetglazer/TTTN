@@ -45,8 +45,7 @@ public class PaymentServiceKafkaListener {
                     commandHandlerService.handleProcessPayment(command);
                     break;
                 case "PAYMENT_REVERSE":
-                    // TODO: Implement cancel payment handler
-                    log.warn("Payment cancellation not yet implemented");
+                    commandHandlerService.handleReversePayment(command);
                     break;
                 default:
                     log.warn("Unknown payment command type: {} for saga: {}", commandType, sagaId);

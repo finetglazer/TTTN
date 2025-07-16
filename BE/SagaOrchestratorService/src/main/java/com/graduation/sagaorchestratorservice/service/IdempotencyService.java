@@ -1,6 +1,7 @@
 package com.graduation.sagaorchestratorservice.service;
 
 import com.graduation.sagaorchestratorservice.model.ProcessedMessage;
+import com.graduation.sagaorchestratorservice.model.enums.ActionType;
 import com.graduation.sagaorchestratorservice.repository.ProcessedMessageRepository;
 import com.graduation.sagaorchestratorservice.utils.MessageIdGenerator;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +32,7 @@ public class IdempotencyService {
      * 1. Message with messageId
      * 2. Message identified by sagaId + stepId combination
      */
-    public boolean isProcessed(String messageId, String sagaId, Integer stepId, String messageType) {
+    public boolean isProcessed(String messageId, String sagaId, Integer stepId, String messageType, ActionType actionType) {
         // Primary check: by messageId if available
         if (messageId != null && !messageId.trim().isEmpty()) {
             Optional<ProcessedMessage> processed = processedMessageRepository.findByMessageId(messageId);
@@ -41,17 +42,19 @@ public class IdempotencyService {
             }
         }
 
-        // Secondary check: by sagaId + stepId combination
-        if (sagaId != null && stepId != null) {
-            Optional<ProcessedMessage> processed = processedMessageRepository.findBySagaIdAndStepId(sagaId, stepId);
+        // Secondary check: by sagaId + stepId + actionType combination
+        if (sagaId != null && stepId != null && actionType != null) {
+            Optional<ProcessedMessage> processed = processedMessageRepository
+                    .findBySagaIdAndStepIdAndActionType(sagaId, stepId, actionType);
             if (processed.isPresent()) {
-                log.debug("Message already processed: sagaId={}, stepId={}", sagaId, stepId);
+                log.debug("Message already processed: sagaId={}, stepId={}, actionType={}",
+                        sagaId, stepId, actionType);
                 return true;
             }
         }
 
-        log.debug("Message not processed before: messageId={}, sagaId={}, stepId={}",
-                messageId, sagaId, stepId);
+        log.debug("Message not processed before: messageId={}, sagaId={}, stepId={}, actionType={}",
+                messageId, sagaId, stepId, actionType);
         return false;
     }
 
