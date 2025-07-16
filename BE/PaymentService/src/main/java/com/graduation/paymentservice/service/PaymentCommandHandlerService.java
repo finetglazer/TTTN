@@ -44,7 +44,7 @@ public class PaymentCommandHandlerService {
 
         String orderId = (String) payload.get("orderId");
         String userId = (String) payload.get("userId");
-        BigDecimal amount = new BigDecimal(payload.get("amount").toString());
+        BigDecimal amount = new BigDecimal(payload.get("totalAmount").toString());
         String paymentMethod = (String) payload.getOrDefault("paymentMethod", "CREDIT_CARD");
 
         log.info("Processing payment for order: {}, amount: {}, sagaId: {}",

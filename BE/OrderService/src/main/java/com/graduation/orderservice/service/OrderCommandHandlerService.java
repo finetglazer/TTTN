@@ -170,18 +170,39 @@ public class OrderCommandHandlerService {
      */
     public void handleUpdateOrderDelivered(Map<String, Object> command) {
         try {
+            // Extract payload first (consistent with other handlers)
+            Map<String, Object> payload = (Map<String, Object>) command.get("payload");
+            if (payload == null) {
+                log.error("Command payload is null for sagaId: {}", command.get("sagaId"));
+                publishOrderEvent((String) command.get("sagaId"), null, "ORDER_STATUS_UPDATE_FAILED", false,
+                        null, "Invalid command format: missing payload");
+                return;
+            }
+
             String sagaId = (String) command.get("sagaId");
-            Long orderId = Long.valueOf(command.get("orderId").toString());
-            String reason = (String) command.getOrDefault("reason", "Order delivered successfully");
+            Long orderId = Long.valueOf(payload.get("orderId").toString());
+            String reason = (String) payload.getOrDefault("reason", "Order delivered successfully");
 
             log.info("Updating order {} to DELIVERED for saga: {}", orderId, sagaId);
 
-            // TODO: Inject OrderService and call updateOrderStatus
-            // orderService.updateOrderStatus(orderId, OrderStatus.DELIVERED, reason, sagaId);
+            // Update order status to DELIVERED
+            updateOrderStatus(orderId, OrderStatus.DELIVERED, reason, sagaId);
+
+            // Add 10-second delay before sending event to saga
+            log.info("Processing order delivery update for saga: {} - waiting 10 seconds...", sagaId);
+            try {
+                Thread.sleep(10000); // 10 seconds delay
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                log.warn("Thread interrupted during delay for saga: {}", sagaId);
+            }
 
             // Publish success event
             publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATED_DELIVERED", true,
                     "Order status updated to DELIVERED", null);
+
+            // Log saga completion
+            log.info("Saga {} completed successfully - Order {} delivered", sagaId, orderId);
 
         } catch (Exception e) {
             log.error("Error updating order to delivered: {}", e.getMessage(), e);
@@ -191,6 +212,9 @@ public class OrderCommandHandlerService {
             Long orderId = Long.valueOf(command.get("orderId").toString());
             publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATE_FAILED", false,
                     null, e.getMessage());
+
+            // Log saga failure
+            log.error("Saga {} failed - Order {} delivery update failed: {}", sagaId, orderId, e.getMessage());
         }
     }
 

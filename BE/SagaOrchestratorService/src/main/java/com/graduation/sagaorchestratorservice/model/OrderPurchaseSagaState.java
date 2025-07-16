@@ -178,6 +178,9 @@ public class OrderPurchaseSagaState {
         currentStepStartTime = Instant.now();
 
         if (nextStep == OrderPurchaseSagaStep.COMPLETE_SAGA) {
+
+
+            log.info("Saga [{}] completed successfully", sagaId);
             status = SagaStatus.COMPLETED;
             endTime = Instant.now();
             addEvent(SagaEvent.sagaCompleted());
@@ -208,10 +211,11 @@ public class OrderPurchaseSagaState {
 
         // Determine first compensation step based on completed steps
         boolean paymentProcessed = getCompletedSteps().contains(OrderPurchaseSagaStep.PROCESS_PAYMENT.name());
-        boolean orderStatusUpdated = getCompletedSteps().contains(OrderPurchaseSagaStep.UPDATE_ORDER_STATUS.name());
+        boolean orderStatusConfirmed = getCompletedSteps().contains(OrderPurchaseSagaStep.UPDATE_ORDER_STATUS_CONFIRMED.name());
+        boolean orderStatusDelivered = getCompletedSteps().contains(OrderPurchaseSagaStep.UPDATE_ORDER_STATUS_DELIVERED.name());
 
         currentStep = OrderPurchaseSagaStep.determineFirstCompensationStep(
-                paymentProcessed, orderStatusUpdated);
+                paymentProcessed, orderStatusConfirmed, orderStatusDelivered);
 
         currentStepStartTime = Instant.now();
         lastUpdatedTime = Instant.now();

@@ -362,19 +362,31 @@ public class OrderPurchaseSagaService {
      */
     private Map<String, Object> createCommandForCurrentStep(OrderPurchaseSagaState saga) {
         Map<String, Object> command = new HashMap<>();
+        command.put("sagaId", saga.getSagaId());
+        command.put("messageId", UUID.randomUUID().toString());
+        command.put("timestamp", System.currentTimeMillis());
 
+        // Add step-specific payload
         switch (saga.getCurrentStep()) {
             case PROCESS_PAYMENT:
                 command.put("orderId", saga.getOrderId().toString());
                 command.put("userId", saga.getUserId());
-                command.put("amount", saga.getTotalAmount());
-                command.put("paymentMethod", "CREDIT_CARD"); // Default for now
+                command.put("userEmail", saga.getUserEmail());
+                command.put("userName", saga.getUserName());
+                command.put("orderDescription", saga.getOrderDescription());
+                command.put("totalAmount", saga.getTotalAmount());
                 break;
 
-            case UPDATE_ORDER_STATUS:
+            case UPDATE_ORDER_STATUS_CONFIRMED:
                 command.put("orderId", saga.getOrderId().toString());
                 command.put("newStatus", "CONFIRMED");
                 command.put("reason", "Payment processed successfully");
+                break;
+
+            case UPDATE_ORDER_STATUS_DELIVERED:
+                command.put("orderId", saga.getOrderId().toString());
+                command.put("newStatus", "DELIVERED");
+                command.put("reason", "Order confirmed - ready for delivery");
                 break;
 
             case CANCEL_PAYMENT:

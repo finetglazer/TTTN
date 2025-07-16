@@ -4,15 +4,16 @@ import lombok.Getter;
 
 /**
  * Enum defining all steps in the Order Purchase Saga
- * Simplified workflow: Order (CREATED) → Payment → Order (CONFIRMED) → Complete
+ * Updated workflow: Order (CREATED) → Payment → Order (CONFIRMED) → Order (DELIVERED) → Complete
  */
 @Getter
 public enum OrderPurchaseSagaStep {
 
     // Normal flow steps (starting after order is already CREATED)
     PROCESS_PAYMENT(1, "Process payment for order", CommandType.PAYMENT_PROCESS),
-    UPDATE_ORDER_STATUS(2, "Update order status to confirmed", CommandType.ORDER_UPDATE_CONFIRMED),
-    COMPLETE_SAGA(3, "Complete saga successfully", CommandType.COMPLETE_SAGA),
+    UPDATE_ORDER_STATUS_CONFIRMED(2, "Update order status to confirmed", CommandType.ORDER_UPDATE_CONFIRMED),
+    UPDATE_ORDER_STATUS_DELIVERED(3, "Update order status to delivered", CommandType.ORDER_UPDATE_DELIVERED),
+    COMPLETE_SAGA(4, "Complete saga successfully", CommandType.COMPLETE_SAGA),
 
     // Compensation steps (reverse order)
     CANCEL_PAYMENT(101, "Cancel/refund payment", CommandType.PAYMENT_REVERSE),
@@ -33,8 +34,9 @@ public enum OrderPurchaseSagaStep {
      */
     public OrderPurchaseSagaStep getNextStep() {
         return switch (this) {
-            case PROCESS_PAYMENT -> UPDATE_ORDER_STATUS;
-            case UPDATE_ORDER_STATUS -> COMPLETE_SAGA;
+            case PROCESS_PAYMENT -> UPDATE_ORDER_STATUS_CONFIRMED;
+            case UPDATE_ORDER_STATUS_CONFIRMED -> UPDATE_ORDER_STATUS_DELIVERED;
+            case UPDATE_ORDER_STATUS_DELIVERED -> COMPLETE_SAGA;
             case COMPLETE_SAGA -> null; // End of saga
             default -> null; // Compensation steps don't have "next"
         };
@@ -56,11 +58,15 @@ public enum OrderPurchaseSagaStep {
      */
     public static OrderPurchaseSagaStep determineFirstCompensationStep(
             boolean paymentProcessed,
-            boolean orderStatusUpdated) {
+            boolean orderStatusConfirmed,
+            boolean orderStatusDelivered) {
 
-        if (orderStatusUpdated) {
-            // If order was confirmed, we don't need to cancel it for payment failure
+        if (orderStatusDelivered) {
+            // If order was delivered, we don't need to cancel it for payment failure
             // Just cancel the payment
+            return CANCEL_PAYMENT;
+        } else if (orderStatusConfirmed) {
+            // If order was confirmed but not delivered, cancel payment first, then order
             return CANCEL_PAYMENT;
         } else if (paymentProcessed) {
             // Payment went through but order update failed
@@ -70,6 +76,16 @@ public enum OrderPurchaseSagaStep {
             // Payment failed, just cancel the order
             return CANCEL_ORDER;
         }
+    }
+
+    /**
+     * Legacy method for backward compatibility - now with 3 parameters
+     */
+    public static OrderPurchaseSagaStep determineFirstCompensationStep(
+            boolean paymentProcessed,
+            boolean orderStatusUpdated) {
+        // Treat the old orderStatusUpdated as orderStatusConfirmed
+        return determineFirstCompensationStep(paymentProcessed, orderStatusUpdated, false);
     }
 
     /**
@@ -95,6 +111,8 @@ public enum OrderPurchaseSagaStep {
      * Check if step requires compensation when failed
      */
     public boolean requiresCompensation() {
-        return this == PROCESS_PAYMENT || this == UPDATE_ORDER_STATUS;
+        return this == PROCESS_PAYMENT ||
+                this == UPDATE_ORDER_STATUS_CONFIRMED ||
+                this == UPDATE_ORDER_STATUS_DELIVERED;
     }
 }
