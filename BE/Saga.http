@@ -28,7 +28,7 @@ Content-Type: application/json
 
 ### Combined workflow test:
 ### 1. First create an order (this will trigger saga)
-POST http://localhost:8081/api/orders/create
+POST http://localhost:8080/api/orders/create
 Content-Type: application/json
 
 {
