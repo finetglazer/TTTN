@@ -1,18 +1,21 @@
-import { QueryProvider } from '@/providers/query-provider'
-import './globals.css'
+import type { Metadata } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+    title: "Order Management Portal",
+    description: "Professional order management system with luxury design",
+};
 
 export default function RootLayout({
                                        children,
-                                   }: {
-    children: React.ReactNode
-}) {
+                                   }: Readonly<{
+    children: React.ReactNode;
+}>) {
     return (
         <html lang="en">
-        <body>
-        <QueryProvider>
-            {children}
-        </QueryProvider>
+        <body className="antialiased">
+        {children}
         </body>
         </html>
-    )
+    );
 }
