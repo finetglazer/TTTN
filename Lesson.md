@@ -3,4 +3,10 @@
 docker-compose up --build --force-recreate --remove-orphans -d 
 ```
 
-# 2. If 
+# 2. If only a service
+
+
+# needs to be updated, you can specify the service name.
+```bash
+docker-compose up --build --force-recreate --remove-orphans -d frontend-service
+```

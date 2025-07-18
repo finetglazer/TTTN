@@ -40,6 +40,8 @@ public class IdempotencyService {
                 log.debug("Message already processed: messageId={}", messageId);
                 return true;
             }
+        } else {
+            throw new IllegalArgumentException("messageId is required");
         }
 
         // Secondary check: by sagaId + stepId + actionType combination
@@ -51,6 +53,8 @@ public class IdempotencyService {
                         sagaId, stepId, actionType);
                 return true;
             }
+        } else {
+            throw  new IllegalArgumentException("sagaId and stepId is required");
         }
 
         log.debug("Message not processed before: messageId={}, sagaId={}, stepId={}, actionType={}",

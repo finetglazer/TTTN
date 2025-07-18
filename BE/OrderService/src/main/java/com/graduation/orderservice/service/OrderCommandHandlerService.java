@@ -2,6 +2,7 @@ package com.graduation.orderservice.service;
 
 import com.graduation.orderservice.model.Order;
 import com.graduation.orderservice.model.OrderStatus;
+import com.graduation.orderservice.model.ProcessedMessage;
 import com.graduation.orderservice.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +25,7 @@ public class OrderCommandHandlerService {
 
     private final OrderRepository orderRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
-
+    private final IdempotencyService idempotencyService;
     /**
      * Create a new order and trigger saga
      */
@@ -35,6 +36,9 @@ public class OrderCommandHandlerService {
         log.info("Creating order for user: {} with amount: {}", userId, totalAmount);
 
         try {
+            /*
+            We had checked data from the request successfully! => No need here
+             */
             // Create the order
             Order order = Order.createOrder(userId, userEmail, userName, orderDescription, totalAmount);
 
@@ -88,6 +92,7 @@ public class OrderCommandHandlerService {
 
     /**
      * Update order status (called by saga)
+     * Steps: check processed message -> validate data -> logic solving -> record data
      */
     @Transactional
     public void updateOrderStatus(Long orderId, OrderStatus newStatus, String reason, String sagaId) {
@@ -104,9 +109,8 @@ public class OrderCommandHandlerService {
         if (sagaId != null && order.getSagaId() == null) {
             order.setSagaId(sagaId);
         }
-
         // Update status with history
-        order.updateStatus(newStatus, reason, "SAGA_ORCHESTRATOR");
+        order.updateStatus( newStatus, reason, "SAGA_ORCHESTRATOR");
 
         orderRepository.save(order);
         log.info("Order {} status updated to {} successfully", orderId, newStatus);
@@ -128,7 +132,7 @@ public class OrderCommandHandlerService {
         Order order = optionalOrder.get();
         order.cancel(reason, "SAGA_COMPENSATION");
 
-        Order cancelledOrder = orderRepository.save(order);
+        orderRepository.save(order);
         log.info("Order {} cancelled successfully", orderId);
     }
 
@@ -138,28 +142,34 @@ public class OrderCommandHandlerService {
     public void handleUpdateOrderConfirmed(Map<String, Object> command) {
 
         Map<String, Object> payload = (Map<String, Object>) command.get("payload");
-        if (payload == null) {
-            log.info("payload is null");
-            log.error("Command payload is null for sagaId: {}", command.get("sagaId"));
-            publishOrderEvent((String) command.get("sagaId"), null, "ORDER_STATUS_UPDATE_FAILED", false,
-                    null, "Invalid command format: missing payload");
-        }
+        String messageId = (String) command.get("messageId");
 
-        Long orderId = Long.valueOf(payload.get("orderId").toString());
         String sagaId = command.get("sagaId").toString();
+        //idempotency check
+        if (idempotencyService.isProcessed(messageId, sagaId)) {
+            log.info("Command already processed: messageId={}, sagaId={}", messageId, sagaId);
+            return; // Skip processing if already handled
+        }
         String reason = (String) payload.getOrDefault("reason", "Order confirmed successfully");
+        Long orderId = Long.valueOf(payload.get("orderId").toString());
+
+        // validate reason and orderId
+        if (validatePayload(sagaId, messageId, orderId, reason)) return;
 
         try {
             log.info("Updating order {} to CONFIRMED for saga: {}", orderId, sagaId);
             updateOrderStatus(orderId, OrderStatus.CONFIRMED, reason, sagaId);
+            idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.SUCCESS);
 
             // Publish success event
             publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATED_CONFIRMED", true,
                     "Order status updated to CONFIRMED", null);
+            //record idempotency
+
 
         } catch (Exception e) {
             log.error("Error updating order to confirmed: {}", e.getMessage(), e);
-
+            idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.FAILED);
             publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATE_FAILED", false,
                     null, e.getMessage());
         }
@@ -169,21 +179,25 @@ public class OrderCommandHandlerService {
      * Handle order update delivered command
      */
     public void handleUpdateOrderDelivered(Map<String, Object> command) {
+        String sagaId = (String) command.get("sagaId");
+        String messageId = (String) command.get("messageId");
+        // Idempotency check
+        if (idempotencyService.isProcessed(messageId, sagaId)) {
+            log.info("Command already processed: messageId={}, sagaId={}", messageId, sagaId);
+            return; // Skip processing if already handled
+        }
+
+        // Extract payload first (consistent with other handlers)
+        Map<String, Object> payload = (Map<String, Object>) command.get("payload");
+
+        Long orderId = Long.valueOf(payload.get("orderId").toString());
+        String reason = (String) payload.getOrDefault("reason", "Order delivered successfully");
+        // Validate orderId and reason
+        if (validatePayload(sagaId, messageId, orderId, reason)) return;
+
+        log.info("Updating order {} to DELIVERED for saga: {}", orderId, sagaId);
+
         try {
-            // Extract payload first (consistent with other handlers)
-            Map<String, Object> payload = (Map<String, Object>) command.get("payload");
-            if (payload == null) {
-                log.error("Command payload is null for sagaId: {}", command.get("sagaId"));
-                publishOrderEvent((String) command.get("sagaId"), null, "ORDER_STATUS_UPDATE_FAILED", false,
-                        null, "Invalid command format: missing payload");
-                return;
-            }
-
-            String sagaId = (String) command.get("sagaId");
-            Long orderId = Long.valueOf(payload.get("orderId").toString());
-            String reason = (String) payload.getOrDefault("reason", "Order delivered successfully");
-
-            log.info("Updating order {} to DELIVERED for saga: {}", orderId, sagaId);
 
             // Update order status to DELIVERED
             updateOrderStatus(orderId, OrderStatus.DELIVERED, reason, sagaId);
@@ -196,6 +210,7 @@ public class OrderCommandHandlerService {
                 Thread.currentThread().interrupt();
                 log.warn("Thread interrupted during delay for saga: {}", sagaId);
             }
+            idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.SUCCESS);
 
             // Publish success event
             publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATED_DELIVERED", true,
@@ -206,10 +221,7 @@ public class OrderCommandHandlerService {
 
         } catch (Exception e) {
             log.error("Error updating order to delivered: {}", e.getMessage(), e);
-
-            // Publish failure event
-            String sagaId = (String) command.get("sagaId");
-            Long orderId = Long.valueOf(command.get("orderId").toString());
+            idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.FAILED);
             publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATE_FAILED", false,
                     null, e.getMessage());
 
@@ -218,23 +230,44 @@ public class OrderCommandHandlerService {
         }
     }
 
+    private boolean validatePayload(String sagaId, String messageId, Long orderId, String reason) {
+        if (orderId <= 0 || reason == null || reason.isEmpty()) {
+            log.error("Invalid orderId: {} for sagaId: {}", orderId, sagaId);
+            idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.FAILED);
+            publishOrderEvent(sagaId, null, "ORDER_STATUS_UPDATE_FAILED", false,
+                    null, "Invalid order ID");
+            return true;
+        }
+        return false;
+    }
+
     /**
      * Handle order cancellation command
      */
     public void handleCancelOrder(Map<String, Object> command) {
+        //Idempotency check
+        String sagaId = (String) command.get("sagaId");
+        String messageId = (String) command.get("messageId");
+        if (idempotencyService.isProcessed(messageId, sagaId)) {
+            log.info("Command already processed: messageId={}, sagaId={}", messageId, sagaId);
+            return; // Skip processing if already handled
+        }
+
+        // Extract payload first
+        Map<String, Object> payload = (Map<String, Object>) command.get("payload");
+
+        Long orderId = Long.valueOf(payload.get("orderId").toString());
+        String reason = (String) payload.getOrDefault("reason", "Order cancelled by saga");
+
         try {
-            // Extract payload first
-            Map<String, Object> payload = (Map<String, Object>) command.get("payload");
-
-            String sagaId = (String) command.get("sagaId");
-            Long orderId = Long.valueOf(payload.get("orderId").toString());
-            String reason = (String) payload.getOrDefault("reason", "Order cancelled by saga");
-
-            log.info("Cancelling order {} for saga: {}", orderId, sagaId);
+            // Validate orderId and reason
+            if (validatePayload(sagaId, messageId, orderId, reason)) return;
+            // Proceed with cancellation
 
             // TODO: Inject OrderService and call cancelOrder
             cancelOrder(orderId, reason, sagaId);
 
+            idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.SUCCESS);
             // Publish success event
             publishOrderEvent(sagaId, orderId, "ORDER_CANCELLED", true,
                     "Order cancelled successfully", null);
@@ -242,10 +275,7 @@ public class OrderCommandHandlerService {
         } catch (Exception e) {
             log.error("Error cancelling order: {}", e.getMessage(), e);
 
-            // Publish failure event
-            String sagaId = (String) command.get("sagaId");
-            Map<String, Object> payload = (Map<String, Object>) command.get("payload");
-            Long orderId = Long.valueOf(payload.get("orderId").toString());
+            idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.FAILED);
             publishOrderEvent(sagaId, orderId, "ORDER_CANCELLATION_FAILED", false,
                     null, e.getMessage());
         }

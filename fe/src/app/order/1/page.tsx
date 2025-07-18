@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import Header from '@/components/Layout/Header';
+import Header from '@/components/layout/Header';
 
 interface OrderDetail {
     id: string;
@@ -70,12 +70,18 @@ export default function OrderDetailPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        //check if params exists and has id
+        if (!params?.id) {
+            setLoading(false);
+            return;
+        }
+
         // Mock API call
         setTimeout(() => {
             setOrder(mockOrderDetail);
             setLoading(false);
         }, 500);
-    }, [params.id]);
+    }, [params?.id]);
 
     if (loading) {
         return (

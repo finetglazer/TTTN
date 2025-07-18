@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Header from '@/components/Layout/Header';
+import Header from "@/components/layout/Header";
 
 interface OrderItem {
     id: string;

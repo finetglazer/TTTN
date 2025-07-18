@@ -105,6 +105,16 @@ public class Order {
             return; // No change needed
         }
 
+        // Check current = CREATED, newStatus must be CONFIRMED or CANCELLED
+        if (this.status.equals(OrderStatus.CREATED) && !newStatus.equals(OrderStatus.CONFIRMED) && !newStatus.equals(OrderStatus.CANCELLED)) {
+            throw new IllegalArgumentException("Invalid status transition from CREATED to " + newStatus);
+        }
+
+        // Check current = CONFIRMED, newStatus must be DELIVERED or CANCELLED
+        if (this.status.equals(OrderStatus.CONFIRMED) && !newStatus.equals(OrderStatus.DELIVERED) && !newStatus.equals(OrderStatus.CANCELLED)) {
+            throw new IllegalArgumentException("Invalid status transition from CONFIRMED to " + newStatus);
+        }
+
         // Validate status transition
         if (this.status.isFinalState()) {
             throw new IllegalStateException("Cannot change status from final state: " + this.status);

@@ -19,7 +19,7 @@ export default function Header() {
                     {/* Logo */}
                     <Link href="/" className="flex items-center space-x-2">
                         <div className="text-2xl font-bold text-[#f6d55c]">
-                            OrderPortal
+                            Order Portal
                         </div>
                     </Link>
 

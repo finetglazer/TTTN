@@ -371,9 +371,9 @@ public class OrderPurchaseSagaService {
             case PROCESS_PAYMENT:
                 command.put("orderId", saga.getOrderId().toString());
                 command.put("userId", saga.getUserId());
-                command.put("userEmail", saga.getUserEmail());
-                command.put("userName", saga.getUserName());
-                command.put("orderDescription", saga.getOrderDescription());
+//                command.put("userEmail", saga.getUserEmail());
+//                command.put("userName", saga.getUserName());
+//                command.put("orderDescription", saga.getOrderDescription());
                 command.put("totalAmount", saga.getTotalAmount());
                 break;
 
