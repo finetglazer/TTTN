@@ -1,5 +1,7 @@
 package com.graduation.sagaorchestratorservice.scheduler;
 
+import com.graduation.sagaorchestratorservice.model.OrderPurchaseSagaState;
+import com.graduation.sagaorchestratorservice.service.OrderPurchaseSagaService;
 import com.graduation.sagaorchestratorservice.service.SagaMonitoringService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -22,6 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class SagaTimeoutScheduler {
 
     private final SagaMonitoringService sagaMonitoringService;
+    private final OrderPurchaseSagaService sagaService;
 
     // Configuration values from properties
     @Value("${saga.timeout.default-minutes:10}")
@@ -73,7 +77,6 @@ public class SagaTimeoutScheduler {
 
     /**
      * Perform the actual timeout check logic
-     * This is a placeholder implementation that will be expanded when we have saga state management
      */
     private int performTimeoutCheck() {
         int timedOutCount = 0;
@@ -85,13 +88,8 @@ public class SagaTimeoutScheduler {
             if (health.activeCount > 0) {
                 log.debug("Checking {} active sagas for timeouts", health.activeCount);
 
-                // This is where we would implement actual timeout logic:
-                // 1. Query saga state repository for active sagas
-                // 2. Check each saga's start time against timeout thresholds
-                // 3. Trigger compensation for timed-out sagas
-
-                // For now, we'll simulate timeout detection
-                timedOutCount = checkSimulatedTimeouts();
+                // Actual timeout logic implementation
+                timedOutCount = checkActualTimeouts();
             }
 
         } catch (Exception e) {
@@ -103,18 +101,61 @@ public class SagaTimeoutScheduler {
     }
 
     /**
-     * Simulated timeout check for demonstration
-     * This will be replaced with real saga state checking
+     * Check for actual timed-out sagas using repository queries
      */
-    private int checkSimulatedTimeouts() {
-        // Placeholder implementation
-        // In real implementation, this would:
-        // 1. Query database for active sagas
-        // 2. Calculate elapsed time for each saga
-        // 3. Compare against configured timeouts
-        // 4. Trigger compensation for timed-out sagas
+    private int checkActualTimeouts() {
+        int timedOutCount = 0;
 
-        return 0; // No timeouts found in simulation
+        try {
+            // Check for different timeout scenarios
+            timedOutCount += checkPaymentTimeouts();
+            timedOutCount += checkOrderTimeouts();
+            timedOutCount += checkDefaultTimeouts();
+            
+        } catch (Exception e) {
+            log.error("Error checking for timed-out sagas", e);
+            throw e;
+        }
+
+        return timedOutCount;
+    }
+
+    /**
+     * Check for payment step timeouts (5 minutes)
+     */
+    private int checkPaymentTimeouts() {
+
+        
+        try {
+            return sagaService.checkForTimeoutsWithDuration(Duration.ofMinutes(paymentTimeoutMinutes));
+        } catch (Exception e) {
+            log.error("Error checking payment timeouts", e);
+            return 0;
+        }
+    }
+
+    /**
+     * Check for order step timeouts (15 minutes)
+     */
+    private int checkOrderTimeouts() {
+        try {
+            return sagaService.checkForTimeoutsWithDuration(Duration.ofMinutes(orderTimeoutMinutes));
+        } catch (Exception e) {
+            log.error("Error checking order timeouts", e);
+            return 0;
+        }
+    }
+
+    /**
+     * Check for default timeouts (10 minutes)
+     */
+    private int checkDefaultTimeouts() {
+        try {
+            return sagaService.checkForTimeoutsWithDuration(Duration.ofMinutes(defaultTimeoutMinutes));
+        } catch (Exception e) {
+            log.error("Error checking default timeouts", e);
+            return 0;
+        }
     }
 
     /**
@@ -165,21 +206,33 @@ public class SagaTimeoutScheduler {
 
     /**
      * Trigger compensation for a timed-out saga
-     * This is a placeholder that will be implemented with actual saga orchestration
      */
     private void triggerSagaCompensation(String sagaId, String reason) {
         log.warn("Triggering compensation for saga {} due to: {}", sagaId, reason);
 
-        // Record the failure in monitoring
-        sagaMonitoringService.recordSagaFailed(sagaId, reason);
-
-        // Here we would:
-        // 1. Update saga state to COMPENSATING
-        // 2. Send compensation commands to participating services
-        // 3. Track compensation progress
-
-        // For now, just log the action
-        log.info("Compensation triggered for saga: {}", sagaId);
+        try {
+            // Find and process timeout through the saga service
+            Optional<OrderPurchaseSagaState> optionalSaga = sagaService.findById(sagaId);
+            
+            if (optionalSaga.isPresent()) {
+                OrderPurchaseSagaState saga = optionalSaga.get();
+                
+                // Check if saga is still in a state where it can be timed out
+                if (saga.getStatus().isActive()) {
+                    // Trigger timeout handling through the saga service
+                    sagaService.handleSagaTimeoutManually(sagaId, reason);
+                    log.info("Timeout compensation triggered for saga: {}", sagaId);
+                } else {
+                    log.info("Saga {} is no longer active, skipping timeout compensation", sagaId);
+                }
+            } else {
+                log.warn("Saga {} not found for timeout compensation", sagaId);
+            }
+        } catch (Exception e) {
+            log.error("Error triggering compensation for saga {}: {}", sagaId, e.getMessage());
+            // Record the failure in monitoring
+            sagaMonitoringService.recordSagaFailed(sagaId, reason + " - Compensation trigger failed: " + e.getMessage());
+        }
     }
 
     /**

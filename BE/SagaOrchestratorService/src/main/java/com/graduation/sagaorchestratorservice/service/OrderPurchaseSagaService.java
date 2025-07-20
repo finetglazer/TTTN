@@ -17,6 +17,8 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Service for managing Order Purchase Saga workflow
@@ -47,6 +49,12 @@ public class OrderPurchaseSagaService {
 
     @Value("${saga.compensation.max-retries:3}")
     private int defaultMaxCompensationRetries;
+
+    @Value("${saga.retry.delay-seconds:5}")
+    private int baseRetryDelaySeconds;
+
+    // Synchronization for preventing race conditions
+    private final ConcurrentHashMap<String, ReentrantLock> sagaLocks = new ConcurrentHashMap<>();
 
     /**
      * Start a new order purchase saga
@@ -140,50 +148,58 @@ public class OrderPurchaseSagaService {
 
         log.debug("Handling event [{}] for saga: {}", eventType, sagaId);
 
-        // Find the saga
-        Optional<OrderPurchaseSagaState> optionalSaga = sagaRepository.findById(sagaId);
-        if (optionalSaga.isEmpty()) {
-            log.warn("Received event for unknown saga: {}", sagaId);
-            return;
-        }
-
-        OrderPurchaseSagaState saga = optionalSaga.get();
-
-        // Check idempotency
-        String messageId = (String) eventData.get("messageId");
-        ActionType actionType = isCompensationEvent(eventType) ? ActionType.COMPENSATION : ActionType.FORWARD;
-
-        if (idempotencyService.isProcessed(messageId, sagaId,
-                saga.getCurrentStep() != null ? saga.getCurrentStep().getStepNumber() : null,
-                eventType, actionType)) {
-            log.info("Event [{}] for saga [{}] has already been processed", eventType, sagaId);
-            return;
-        }
-
+        // Use saga-specific lock to prevent race conditions
+        ReentrantLock lock = getSagaLock(sagaId);
+        lock.lock();
         try {
-            // Validate event matches current step
-            if (!isEventForCurrentStep(saga, eventType)) {
-                log.warn("Event [{}] doesn't match current step [{}] for saga [{}]",
-                        eventType, saga.getCurrentStep(), sagaId);
-                recordEventProcessing(eventData, saga, "Event ignored - doesn't match current step");
+            // Find the saga
+            Optional<OrderPurchaseSagaState> optionalSaga = sagaRepository.findById(sagaId);
+            if (optionalSaga.isEmpty()) {
+                log.warn("Received event for unknown saga: {}", sagaId);
                 return;
             }
 
-            // Process based on success/failure
-            if (Boolean.TRUE.equals(success)) {
-                processSuccessEvent(saga, eventData);
-            } else {
-                processFailureEvent(saga, eventData);
+            OrderPurchaseSagaState saga = optionalSaga.get();
+
+            // Check idempotency
+            String messageId = (String) eventData.get("messageId");
+            ActionType actionType = isCompensationEvent(eventType) ? ActionType.COMPENSATION : ActionType.FORWARD;
+
+            if (idempotencyService.isProcessed(messageId, sagaId,
+                    saga.getCurrentStep() != null ? saga.getCurrentStep().getStepNumber() : null,
+                    eventType, actionType)) {
+                log.info("Event [{}] for saga [{}] has already been processed", eventType, sagaId);
+                return;
             }
 
-            // Record successful processing
-            recordEventProcessing(eventData, saga, "Event processed successfully");
+            try {
+                // Validate event matches current step
+                if (!isEventForCurrentStep(saga, eventType)) {
+                    log.warn("Event [{}] doesn't match current step [{}] for saga [{}]",
+                            eventType, saga.getCurrentStep(), sagaId);
+                    recordEventProcessing(eventData, saga, "Event ignored - doesn't match current step");
+                    return;
+                }
 
-        } catch (Exception e) {
-            log.error("Error handling event {} for saga {}", eventType, sagaId, e);
-            recordEventProcessing(eventData, saga, "Error processing event: " + e.getMessage());
+                // Process based on success/failure
+                if (Boolean.TRUE.equals(success)) {
+                    processSuccessEvent(saga, eventData);
+                } else {
+                    processFailureEvent(saga, eventData);
+                }
+
+                // Record successful processing
+                recordEventProcessing(eventData, saga, "Event processed successfully");
+
+            } catch (Exception e) {
+                log.error("Error handling event {} for saga {}", eventType, sagaId, e);
+                recordEventProcessing(eventData, saga, "Error processing event: " + e.getMessage());
+            }
+        } finally {
+            lock.unlock();
         }
     }
+    
     // Helper method to determine if event is compensation
     private boolean isCompensationEvent(String eventType) {
         return eventType.contains("FAILED") || eventType.contains("COMPENSATION") || eventType.contains("ROLLBACK");
@@ -355,6 +371,9 @@ public class OrderPurchaseSagaService {
 
         sagaRepository.save(saga);
         monitoringService.recordSagaCompleted(saga.getSagaId());
+        
+        // Clean up locks for completed saga
+        cleanupCompletedSagaLocks(saga.getSagaId());
     }
 
     /**
@@ -491,21 +510,140 @@ public class OrderPurchaseSagaService {
     }
 
     /**
+     * Check for timed-out sagas with specific duration and handle them
+     */
+    public int checkForTimeoutsWithDuration(Duration timeout) {
+        log.debug("Checking for timed-out saga steps with timeout: {}", timeout);
+
+        List<SagaStatus> activeStatuses = Arrays.asList(SagaStatus.STARTED, SagaStatus.IN_PROGRESS, SagaStatus.COMPENSATING);
+        Instant cutoffTime = Instant.now().minus(timeout);
+
+        List<OrderPurchaseSagaState> timedOutSagas = sagaRepository.findSagasWithStepTimeout(activeStatuses, cutoffTime);
+
+        log.debug("Found {} timed-out sagas with timeout {}", timedOutSagas.size(), timeout);
+
+        for (OrderPurchaseSagaState saga : timedOutSagas) {
+            handleSagaTimeout(saga);
+        }
+
+        return timedOutSagas.size();
+    }
+
+    /**
      * Handle a timed-out saga
      */
     private void handleSagaTimeout(OrderPurchaseSagaState saga) {
         log.warn("Saga step timed out: {}", saga.getSagaId());
 
         if (saga.getRetryCount() < saga.getMaxRetries()) {
-            // Retry the step
+            // Retry the step with exponential backoff delay
             saga.incrementRetryCount();
-            saga.addEvent(SagaEvent.of("RETRY", "Retrying step " + saga.getCurrentStep() + " after timeout"));
+            saga.addEvent(SagaEvent.of("RETRY", "Retrying step " + saga.getCurrentStep() + " after timeout (attempt " + saga.getRetryCount() + ")"));
             sagaRepository.save(saga);
-            processNextStep(saga);
+            
+            // Apply exponential backoff delay
+            scheduleRetryWithDelay(saga);
         } else {
             // Exceeded retries, start compensation
             handleStepFailure(saga, "Step timed out after " + saga.getMaxRetries() + " retries");
         }
+    }
+
+    /**
+     * Handle a timed-out saga manually (called from scheduler)
+     */
+    @Transactional
+    public void handleSagaTimeoutManually(String sagaId, String reason) {
+        log.warn("Handling manual timeout for saga: {} - {}", sagaId, reason);
+
+        // Use saga-specific lock to prevent race conditions
+        ReentrantLock lock = getSagaLock(sagaId);
+        lock.lock();
+        try {
+            Optional<OrderPurchaseSagaState> optionalSaga = sagaRepository.findById(sagaId);
+            if (optionalSaga.isPresent()) {
+                OrderPurchaseSagaState saga = optionalSaga.get();
+                
+                // Only handle timeout if saga is still active
+                if (saga.getStatus().isActive()) {
+                    handleSagaTimeout(saga);
+                } else {
+                    log.info("Saga {} is no longer active, skipping timeout handling", sagaId);
+                }
+            } else {
+                log.warn("Saga {} not found for manual timeout handling", sagaId);
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * Schedule a retry with exponential backoff delay
+     */
+    private void scheduleRetryWithDelay(OrderPurchaseSagaState saga) {
+        long delayMs = calculateRetryDelay(saga.getRetryCount());
+        
+        log.info("Scheduling retry for saga {} with delay of {}ms (attempt {})", 
+                saga.getSagaId(), delayMs, saga.getRetryCount());
+        
+        // Use CompletableFuture for async delay
+        java.util.concurrent.CompletableFuture.delayedExecutor(delayMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+            .execute(() -> {
+                try {
+                    // Reload saga to ensure we have the latest state
+                    Optional<OrderPurchaseSagaState> optionalSaga = sagaRepository.findById(saga.getSagaId());
+                    if (optionalSaga.isPresent()) {
+                        OrderPurchaseSagaState currentSaga = optionalSaga.get();
+                        // Only retry if still in a retryable state
+                        if (currentSaga.getStatus().isActive() && currentSaga.getRetryCount() <= currentSaga.getMaxRetries()) {
+                            log.info("Executing delayed retry for saga {} (attempt {})", 
+                                    currentSaga.getSagaId(), currentSaga.getRetryCount());
+                            processNextStep(currentSaga);
+                        } else {
+                            log.warn("Saga {} state changed during retry delay, skipping retry", saga.getSagaId());
+                        }
+                    } else {
+                        log.warn("Saga {} not found during delayed retry", saga.getSagaId());
+                    }
+                } catch (Exception e) {
+                    log.error("Error during delayed retry for saga {}", saga.getSagaId(), e);
+                }
+            });
+    }
+
+    /**
+     * Calculate retry delay using exponential backoff
+     * Base delay * (2^(retryCount-1)) with jitter
+     */
+    private long calculateRetryDelay(int retryCount) {
+        // Base delay in milliseconds
+        long baseDelayMs = baseRetryDelaySeconds * 1000L;
+        
+        // Exponential backoff: base * 2^(retryCount-1)
+        long exponentialDelay = baseDelayMs * (1L << (retryCount - 1));
+        
+        // Add jitter (±20% random variation)
+        double jitter = 0.8 + (Math.random() * 0.4); // 0.8 to 1.2
+        long delayWithJitter = Math.round(exponentialDelay * jitter);
+        
+        // Cap at maximum delay (60 seconds)
+        long maxDelayMs = 60 * 1000L;
+        return Math.min(delayWithJitter, maxDelayMs);
+    }
+
+    /**
+     * Get or create a saga-specific lock for synchronization
+     */
+    private ReentrantLock getSagaLock(String sagaId) {
+        return sagaLocks.computeIfAbsent(sagaId, k -> new ReentrantLock());
+    }
+
+    /**
+     * Clean up locks for completed sagas to prevent memory leaks
+     */
+    private void cleanupCompletedSagaLocks(String sagaId) {
+        sagaLocks.remove(sagaId);
     }
 
     // Repository access methods

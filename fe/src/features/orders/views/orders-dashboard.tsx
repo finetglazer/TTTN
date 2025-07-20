@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import Header from '@/components/layout/Header';
+import Header from '@/layouts/components/header';
 
 interface Order {
     id: string;

@@ -1,0 +1,13 @@
+export const ORDER_STATUS = {
+    CREATED: 'CREATED',
+    CONFIRMED: 'CONFIRMED',
+    DELIVERED: 'DELIVERED',
+    CANCELLED: 'CANCELLED'
+} as const;
+
+export const PAYMENT_STATUS = {
+    PENDING: 'PENDING',
+    CONFIRMED: 'CONFIRMED',
+    DECLINED: 'DECLINED',
+    FAILED: 'FAILED'
+} as const;
