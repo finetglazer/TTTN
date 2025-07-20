@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
@@ -110,6 +111,16 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --deep-charcoal: #1a1a1a;
+  --slate-gray: #2d3748;
+  --luxury-gold: #f6d55c;
+  --warm-gray: #718096;
+  --pure-white: #ffffff;
+  --off-white: #f7fafc;
+  --success: #48bb78;
+  --warning: #ed8936;
+  --error: #f56565;
+  --info: #4299e1;
 }
 
 @layer base {
@@ -119,4 +130,71 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-gradient-to-r from-[#f6d55c] to-[#e6c53f] text-[#1a1a1a] font-medium px-6 py-3 rounded-lg transition-all duration-200 hover:shadow-lg hover:scale-105;
+    box-shadow: 0 8px 25px rgba(246, 213, 92, 0.3);
+  }
+
+  .btn-secondary {
+    @apply border border-[#f6d55c] text-[#f6d55c] font-medium px-6 py-3 rounded-lg transition-all duration-200 hover:bg-[#f6d55c] hover:text-[#1a1a1a];
+  }
+
+  .btn-ghost {
+    @apply text-[#2d3748] font-medium px-4 py-2 rounded-lg transition-all duration-200 hover:bg-gray-100;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-lg p-6;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+  }
+
+  .status-badge {
+    @apply px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .status-created {
+    @apply bg-[#4299e1] text-white;
+  }
+
+  .status-confirmed {
+    @apply bg-[#ed8936] text-white;
+  }
+
+  .status-delivered {
+    @apply bg-[#48bb78] text-white;
+  }
+
+  .status-cancelled {
+    @apply bg-[#f56565] text-white;
+  }
+
+  .form-input {
+    @apply w-full h-12 px-4 border border-gray-300 rounded-lg focus:border-[#f6d55c] focus:ring-2 focus:ring-[#f6d55c] focus:ring-opacity-20 transition-all duration-200;
+  }
+
+  .form-label {
+    @apply block text-sm font-medium text-[#2d3748] mb-2;
+  }
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(246, 213, 92, 0.4); }
+  50% { box-shadow: 0 0 0 10px rgba(246, 213, 92, 0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Header from "@/components/layout/Header";
+import AppLayout from '@/layouts/app-layout';
 
 interface OrderItem {
     id: string;
@@ -52,8 +52,8 @@ export default function CreateOrderPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#f7fafc]">
-            <Header />
+        <AppLayout>
+            <div className="min-h-screen bg-[#f7fafc]">
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-8">
@@ -242,6 +242,7 @@ export default function CreateOrderPage() {
                     </div>
                 </form>
             </div>
-        </div>
+            </div>
+        </AppLayout>
     );
 }
