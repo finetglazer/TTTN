@@ -1,6 +1,7 @@
 // ProcessedMessage.java - Model/Entity
 package com.graduation.orderservice.model;
 
+import com.graduation.orderservice.constant.Constant;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import jakarta.persistence.*;
@@ -10,23 +11,23 @@ import lombok.NoArgsConstructor;
 
 @Data
 @Entity
-@Table(name = "processed_messages")
+@Table(name = Constant.TABLE_PROCESSED_MESSAGES)
 @AllArgsConstructor
 @NoArgsConstructor
 public class ProcessedMessage {
 
     @Id
-    @Column(name = "message_id")
+    @Column(name = Constant.COLUMN_MESSAGE_ID)
     private String messageId;
 
-    @Column(name = "saga_id")
+    @Column(name = Constant.COLUMN_SAGA_ID)
     private String sagaId;
 
-    @Column(name = "processed_at")
+    @Column(name = Constant.COLUMN_PROCESSED_AT)
     private Instant processedAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status")
+    @Column(name = Constant.COLUMN_STATUS)
     private ProcessStatus status;
 
     // Status Enum

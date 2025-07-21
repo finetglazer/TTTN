@@ -3,6 +3,7 @@
 // import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { COLORS, TIMING, ROUTES } from '@/core/config/constants';
 
 export default function WelcomePage() {
     const [isLoaded, setIsLoaded] = useState(false);
@@ -17,8 +18,8 @@ export default function WelcomePage() {
         setIsTransitioning(true);
         // Wait for animation to complete before navigation
         setTimeout(() => {
-            router.push('/orders');
-        }, 700);
+            router.push(ROUTES.ORDERS);
+        }, TIMING.TRANSITION_TIMEOUT);
     };
 
     return (
@@ -38,7 +39,7 @@ export default function WelcomePage() {
                 <div
                     className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black"
                     style={{
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23f6d55c' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3Ccircle cx='15' cy='15' r='1'/%3E%3Ccircle cx='45' cy='45' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='${COLORS.PRIMARY_GOLD.replace('#', '%23')}' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3Ccircle cx='15' cy='15' r='1'/%3E%3Ccircle cx='45' cy='45' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
                     }}
                 />
 
@@ -48,7 +49,7 @@ export default function WelcomePage() {
                 {/* Header */}
                 <header className="relative z-10 p-6">
                     <div className="max-w-7xl mx-auto">
-                        <div className="text-2xl font-bold text-[#f6d55c] tracking-wide">
+                        <div className="text-2xl font-bold tracking-wide" style={{color: COLORS.PRIMARY_GOLD}}>
                             Order Portal
                         </div>
                     </div>
@@ -58,7 +59,7 @@ export default function WelcomePage() {
                 <main className="relative z-10 flex items-center justify-center min-h-[80vh] px-6">
                     <div className={`text-center max-w-3xl mx-auto transition-all duration-1000 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
                         {/* Logo/Title - Enhanced with better spacing and size */}
-                        <h1 className="text-6xl md:text-8xl font-bold text-[#f6d55c] mb-8 tracking-tight leading-tight">
+                        <h1 className="text-6xl md:text-8xl font-bold mb-8 tracking-tight leading-tight" style={{color: COLORS.PRIMARY_GOLD}}>
                             Order Management
                         </h1>
 
@@ -76,7 +77,12 @@ export default function WelcomePage() {
                         {/* Enhanced Enter Button */}
                         <button
                             onClick={handleTransition}
-                            className="inline-block bg-gradient-to-r from-[#f6d55c] to-[#e6c53f] hover:from-[#e6c53f] hover:to-[#d4b739] text-[#1a1a1a] text-xl font-semibold px-12 py-4 rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-[#f6d55c]/25 active:scale-95"
+                            className="inline-block text-xl font-semibold px-12 py-4 rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl active:scale-95"
+                            style={{
+                                background: `linear-gradient(to right, ${COLORS.PRIMARY_GOLD}, ${COLORS.GOLD_HOVER})`,
+                                color: COLORS.DEEP_CHARCOAL,
+                                boxShadow: 'rgba(246, 213, 92, 0.25) 0px 25px 50px -12px'
+                            }}
                         >
                             Enter Portal
                         </button>

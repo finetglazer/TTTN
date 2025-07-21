@@ -1,6 +1,7 @@
 package com.graduation.paymentservice.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.graduation.paymentservice.constant.Constant;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -17,12 +18,12 @@ import java.util.UUID;
  * Entity representing a payment transaction in the system
  */
 @Entity
-@Table(name = "payment_transactions", indexes = {
-        @Index(name = "idx_payment_order_id", columnList = "orderId"),
-        @Index(name = "idx_payment_user_id", columnList = "userId"),
-        @Index(name = "idx_payment_status", columnList = "status"),
-        @Index(name = "idx_payment_saga_id", columnList = "sagaId"),
-        @Index(name = "idx_payment_processed_at", columnList = "processedAt")
+@Table(name = Constant.TABLE_PAYMENT_TRANSACTIONS, indexes = {
+        @Index(name = Constant.INDEX_PAYMENT_ORDER_ID, columnList = Constant.FIELD_ORDER_ID),
+        @Index(name = Constant.INDEX_PAYMENT_USER_ID, columnList = Constant.FIELD_USER_ID),
+        @Index(name = Constant.INDEX_PAYMENT_STATUS, columnList = Constant.FIELD_STATUS),
+        @Index(name = Constant.INDEX_PAYMENT_SAGA_ID, columnList = Constant.FIELD_SAGA_ID),
+        @Index(name = Constant.INDEX_PAYMENT_PROCESSED_AT, columnList = "processedAt")
 })
 @Data
 @NoArgsConstructor
@@ -35,57 +36,56 @@ public class PaymentTransaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Order ID cannot be blank")
-    @Column(name = "order_id", nullable = false)
+    @NotBlank(message = Constant.VALIDATION_ORDER_ID_BLANK)
+    @Column(name = Constant.COLUMN_ORDER_ID, nullable = false)
     private String orderId;
 
-    @NotBlank(message = "User ID cannot be blank")
-    @Column(name = "user_id", nullable = false)
+    @NotBlank(message = Constant.VALIDATION_USER_ID_BLANK)
+    @Column(name = Constant.COLUMN_USER_ID, nullable = false)
     private String userId;
 
-    @NotNull(message = "Amount cannot be null")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Amount must be greater than 0")
-    @Digits(integer = 10, fraction = 2, message = "Amount must have at most 10 integer digits and 2 decimal places")
-    @Column(name = "amount", nullable = false, precision = 12, scale = 2)
+    @NotNull(message = Constant.VALIDATION_AMOUNT_NULL)
+    @DecimalMin(value = "0.0", inclusive = false, message = Constant.VALIDATION_AMOUNT_MIN)
+    @Digits(integer = 10, fraction = 2, message = Constant.VALIDATION_AMOUNT_DIGITS)
+    @Column(name = Constant.COLUMN_AMOUNT, nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
-    @NotNull(message = "Payment status cannot be null")
+    @NotNull(message = Constant.VALIDATION_PAYMENT_STATUS_NULL)
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = Constant.COLUMN_STATUS, nullable = false)
     @Builder.Default
     private PaymentStatus status = PaymentStatus.PENDING;
 
-    @Column(name = "auth_token", length = 500)
+    @Column(name = Constant.COLUMN_AUTH_TOKEN, length = 500)
     private String authToken;
 
-    @Column(name = "mock_decision_reason", length = 1000)
+    @Column(name = Constant.COLUMN_MOCK_DECISION_REASON, length = 1000)
     private String mockDecisionReason;
 
     @CreationTimestamp
-    @Column(name = "processed_at", nullable = false, updatable = false)
+    @Column(name = Constant.COLUMN_PROCESSED_AT, nullable = false, updatable = false)
     private LocalDateTime processedAt;
 
-    @Column(name = "saga_id")
+    @Column(name = Constant.COLUMN_SAGA_ID)
     private String sagaId;
 
-    // Additional fields for payment processing
-    @Column(name = "payment_method")
+    @Column(name = Constant.COLUMN_PAYMENT_METHOD)
     private String paymentMethod;
 
-    @Column(name = "transaction_reference", unique = true)
+    @Column(name = Constant.COLUMN_TRANSACTION_REFERENCE, unique = true)
     private String transactionReference;
 
-    @Column(name = "external_transaction_id")
+    @Column(name = Constant.COLUMN_EXTERNAL_TRANSACTION_ID)
     private String externalTransactionId;
 
-    @Column(name = "failure_reason", length = 500)
+    @Column(name = Constant.COLUMN_FAILURE_REASON, length = 500)
     private String failureReason;
 
-    @Column(name = "retry_count")
+    @Column(name = Constant.COLUMN_RETRY_COUNT)
     @Builder.Default
-    private Integer retryCount = 0;
+    private Integer retryCount = Constant.DEFAULT_RETRY_COUNT;
 
-    @Column(name = "last_retry_at")
+    @Column(name = Constant.COLUMN_LAST_RETRY_AT)
     private LocalDateTime lastRetryAt;
 
     /**
@@ -124,7 +124,7 @@ public class PaymentTransaction {
      */
     public void processPayment() {
         if (this.status != PaymentStatus.PENDING) {
-            throw new IllegalStateException("Payment can only be processed from PENDING status, current: " + this.status);
+            throw new IllegalStateException(String.format(Constant.ERROR_PAYMENT_ONLY_PROCESS_PENDING, this.status));
         }
 
         // Simulate payment processing (mock implementation)
@@ -145,13 +145,13 @@ public class PaymentTransaction {
      */
     public void confirmPayment(String authToken, String externalTransactionId) {
         if (this.status != PaymentStatus.PENDING) {
-            throw new IllegalStateException("Payment can only be confirmed from PENDING status, current: " + this.status);
+            throw new IllegalStateException(String.format(Constant.ERROR_PAYMENT_ONLY_CONFIRM_PENDING, this.status));
         }
 
         this.status = PaymentStatus.CONFIRMED;
         this.authToken = authToken;
         this.externalTransactionId = externalTransactionId;
-        this.mockDecisionReason = "Payment confirmed successfully";
+        this.mockDecisionReason = Constant.REASON_PAYMENT_CONFIRMED;
     }
 
     /**
@@ -159,7 +159,7 @@ public class PaymentTransaction {
      */
     public void declinePayment(String reason) {
         if (this.status != PaymentStatus.PENDING) {
-            throw new IllegalStateException("Payment can only be declined from PENDING status, current: " + this.status);
+            throw new IllegalStateException(String.format(Constant.ERROR_PAYMENT_ONLY_DECLINE_PENDING, this.status));
         }
 
         this.status = PaymentStatus.DECLINED;
@@ -172,7 +172,7 @@ public class PaymentTransaction {
      */
     public void markAsFailed(String reason) {
         if (this.status.isFinalStatus() && this.status != PaymentStatus.PENDING) {
-            throw new IllegalStateException("Cannot mark as failed from final status: " + this.status);
+            throw new IllegalStateException(String.format(Constant.ERROR_CANNOT_MARK_FAILED_FINAL, this.status));
         }
 
         this.status = PaymentStatus.FAILED;
@@ -185,39 +185,21 @@ public class PaymentTransaction {
      */
     public void retryPayment() {
         if (!this.status.allowsRetry()) {
-            throw new IllegalStateException("Payment retry not allowed for status: " + this.status);
+            throw new IllegalStateException(String.format(Constant.ERROR_RETRY_NOT_ALLOWED, this.status));
         }
 
         this.retryCount++;
         this.lastRetryAt = LocalDateTime.now();
         this.status = PaymentStatus.PENDING;
         this.failureReason = null;
-        this.mockDecisionReason = "Payment retry attempt #" + this.retryCount;
-    }
-
-    /**
-     * Get payment status for external communication
-     */
-    public PaymentDetails getPaymentDetails() {
-        return PaymentDetails.builder()
-                .transactionId(this.id)
-                .orderId(this.orderId)
-                .userId(this.userId)
-                .amount(this.amount)
-                .status(this.status)
-                .paymentMethod(this.paymentMethod)
-                .transactionReference(this.transactionReference)
-                .processedAt(this.processedAt)
-                .sagaId(this.sagaId)
-                .retryCount(this.retryCount)
-                .build();
+        this.mockDecisionReason = String.format(Constant.REASON_PAYMENT_RETRY_FORMAT, this.retryCount);
     }
 
     /**
      * Check if payment can be retried
      */
     public boolean canBeRetried() {
-        return this.status.allowsRetry() && this.retryCount < 3; // Max 3 retries
+        return this.status.allowsRetry() && this.retryCount < Constant.MAX_RETRY_COUNT;
     }
 
     /**
@@ -225,37 +207,38 @@ public class PaymentTransaction {
      */
     private PaymentResult mockPaymentProcessing() {
         // Simulate different payment outcomes based on amount
-        String externalId = "EXT_" + UUID.randomUUID().toString().substring(0, 8);
+        String externalId = Constant.PREFIX_EXTERNAL_TRANSACTION + UUID.randomUUID().toString().substring(0, Constant.UUID_SUBSTRING_LENGTH);
 
-        if (amount.compareTo(BigDecimal.valueOf(1000)) > 0) {
+        if (amount.compareTo(BigDecimal.valueOf(Constant.HIGH_AMOUNT_THRESHOLD)) > 0) {
             // High amounts might be declined
-            if (Math.random() < 0.3) { // 30% chance of decline
+            if (Math.random() < Constant.DECLINE_PROBABILITY) {
                 return new PaymentResult(PaymentStatus.DECLINED, null,
-                        "High amount transaction declined", externalId);
+                        Constant.REASON_HIGH_AMOUNT_DECLINED, externalId);
             }
         }
 
-        if (Math.random() < 0.1) { // 10% chance of technical failure
+        if (Math.random() < Constant.FAILURE_PROBABILITY) {
             return new PaymentResult(PaymentStatus.FAILED, null,
-                    "Technical error during processing", externalId);
+                    Constant.REASON_TECHNICAL_ERROR, externalId);
         }
 
         // Success case
-        String authToken = "AUTH_" + UUID.randomUUID().toString();
+        String authToken = Constant.PREFIX_AUTH_TOKEN + UUID.randomUUID().toString();
         return new PaymentResult(PaymentStatus.CONFIRMED, authToken,
-                "Payment processed successfully", externalId);
+                Constant.REASON_PAYMENT_PROCESSED, externalId);
     }
 
     /**
      * Generate unique transaction reference
      */
     private static String generateTransactionReference() {
-        return "PAY_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
+        return Constant.PREFIX_PAYMENT_MESSAGE + System.currentTimeMillis() + "_" +
+                UUID.randomUUID().toString().substring(0, Constant.UUID_SUBSTRING_LENGTH);
     }
 
     @Override
     public String toString() {
-        return String.format("PaymentTransaction{id=%d, orderId='%s', userId='%s', amount=%s, status=%s, sagaId='%s'}",
+        return String.format(Constant.FORMAT_PAYMENT_TRANSACTION_TOSTRING,
                 id, orderId, userId, amount, status, sagaId);
     }
 
@@ -268,16 +251,14 @@ public class PaymentTransaction {
             this.status = PaymentStatus.PENDING;
         }
         if (this.retryCount == null) {
-            this.retryCount = 0;
+            this.retryCount = Constant.DEFAULT_RETRY_COUNT;
         }
         if (this.transactionReference == null) {
             this.transactionReference = generateTransactionReference();
         }
     }
 
-    /**
-     * Inner class for payment processing result
-     */
+    // Inner classes remain the same...
     private static class PaymentResult {
         final PaymentStatus status;
         final String authToken;
@@ -292,9 +273,6 @@ public class PaymentTransaction {
         }
     }
 
-    /**
-     * DTO class for external communication
-     */
     @Data
     @Builder
     @NoArgsConstructor

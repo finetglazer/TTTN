@@ -1,5 +1,6 @@
 package com.graduation.sagaorchestratorservice.service;
 
+import com.graduation.sagaorchestratorservice.constants.Constant;
 import com.graduation.sagaorchestratorservice.repository.ProcessedMessageRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
@@ -50,55 +51,56 @@ public class SagaMonitoringService {
 
     @PostConstruct
     public void initializeMetrics() {
-        log.info("Initializing saga monitoring metrics");
+        log.info(Constant.LOG_INITIALIZING_METRICS);
 
         // Gauges for current state
         activeSagasGauge = new AtomicInteger(0);
-        meterRegistry.gauge("saga.active.count", activeSagasGauge);
+        meterRegistry.gauge(Constant.METRIC_SAGA_ACTIVE_COUNT, activeSagasGauge);
 
         totalSagasProcessed = new AtomicLong(0);
-        meterRegistry.gauge("saga.total.processed", totalSagasProcessed);
+        meterRegistry.gauge(Constant.METRIC_SAGA_TOTAL_PROCESSED, totalSagasProcessed);
 
         totalMessagesProcessed = new AtomicLong(0);
-        meterRegistry.gauge("saga.messages.total.processed", totalMessagesProcessed);
+        meterRegistry.gauge(Constant.METRIC_SAGA_MESSAGES_TOTAL_PROCESSED, totalMessagesProcessed);
 
         totalSagaFailures = new AtomicLong(0);
-        meterRegistry.gauge("saga.total.failures", totalSagaFailures);
+        meterRegistry.gauge(Constant.METRIC_SAGA_TOTAL_FAILURES, totalSagaFailures);
 
         // Counters for events
-        sagaStartedCounter = Counter.builder("saga.started")
-                .description("Number of sagas started")
+        sagaStartedCounter = Counter.builder(Constant.METRIC_SAGA_STARTED)
+                .description(Constant.METRIC_DESC_SAGA_STARTED)
                 .register(meterRegistry);
 
-        sagaCompletedCounter = Counter.builder("saga.completed")
-                .description("Number of sagas completed successfully")
+        sagaCompletedCounter = Counter.builder(Constant.METRIC_SAGA_COMPLETED)
+                .description(Constant.METRIC_DESC_SAGA_COMPLETED)
                 .register(meterRegistry);
 
-        sagaFailedCounter = Counter.builder("saga.failed")
-                .description("Number of sagas that failed")
+        sagaFailedCounter = Counter.builder(Constant.METRIC_SAGA_FAILED)
+                .description(Constant.METRIC_DESC_SAGA_FAILED)
                 .register(meterRegistry);
 
-        messageProcessedCounter = Counter.builder("saga.message.processed")
-                .description("Number of messages processed")
+        messageProcessedCounter = Counter.builder(Constant.METRIC_SAGA_MESSAGE_PROCESSED)
+                .description(Constant.METRIC_DESC_MESSAGE_PROCESSED)
                 .register(meterRegistry);
 
-        messageFailedCounter = Counter.builder("saga.message.failed")
-                .description("Number of message processing failures")
+        messageFailedCounter = Counter.builder(Constant.METRIC_SAGA_MESSAGE_FAILED)
+                .description(Constant.METRIC_DESC_MESSAGE_FAILED)
                 .register(meterRegistry);
 
         // Timers for duration tracking
-        sagaExecutionTimer = Timer.builder("saga.execution.time")
-                .description("Time taken to complete sagas")
+        sagaExecutionTimer = Timer.builder(Constant.METRIC_SAGA_EXECUTION_TIME)
+                .description(Constant.METRIC_DESC_EXECUTION_TIME)
                 .publishPercentiles(0.5, 0.75, 0.95, 0.99)
                 .register(meterRegistry);
 
-        messageProcessingTimer = Timer.builder("saga.message.processing.time")
-                .description("Time taken to process individual messages")
+        messageProcessingTimer = Timer.builder(Constant.METRIC_SAGA_MESSAGE_PROCESSING_TIME)
+                .description(Constant.METRIC_DESC_MESSAGE_PROCESSING_TIME)
                 .publishPercentiles(0.5, 0.75, 0.95, 0.99)
                 .register(meterRegistry);
 
-        log.info("Saga monitoring metrics initialized successfully");
+        log.info(Constant.LOG_METRICS_INITIALIZED);
     }
+
 
     /**
      * Record that a saga has started
@@ -110,7 +112,7 @@ public class SagaMonitoringService {
         activeSagasGauge.incrementAndGet();
         sagaStartedCounter.increment();
 
-        log.debug("Recorded saga started: {} of type {}", sagaId, sagaType);
+        log.debug(Constant.LOG_RECORDED_SAGA_STARTED, sagaId, sagaType);
     }
 
     /**
@@ -126,9 +128,9 @@ public class SagaMonitoringService {
             sagaCompletedCounter.increment();
             totalSagasProcessed.incrementAndGet();
 
-            log.debug("Recorded saga completed: {} in {}ms", sagaId, executionTime);
+            log.debug(Constant.LOG_RECORDED_SAGA_COMPLETED, sagaId, executionTime);
         } else {
-            log.warn("Attempted to record completion for unknown saga: {}", sagaId);
+            log.warn(Constant.LOG_UNKNOWN_SAGA_COMPLETION, sagaId);
         }
     }
 
@@ -144,9 +146,9 @@ public class SagaMonitoringService {
             sagaFailedCounter.increment();
             totalSagaFailures.incrementAndGet();
 
-            log.warn("Recorded saga failed: {} after {}ms, reason: {}", sagaId, executionTime, reason);
+            log.warn(Constant.LOG_RECORDED_SAGA_FAILED, sagaId, executionTime, reason);
         } else {
-            log.warn("Attempted to record failure for unknown saga: {}", sagaId);
+            log.warn(Constant.LOG_UNKNOWN_SAGA_FAILURE, sagaId);
         }
     }
 
@@ -164,7 +166,7 @@ public class SagaMonitoringService {
             metrics.incrementMessageCount();
         }
 
-        log.debug("Recorded message processed: type={}, saga={}, time={}ms",
+        log.debug(Constant.LOG_RECORDED_MESSAGE_PROCESSED,
                 messageType, sagaId, processingTimeMs);
     }
 
@@ -180,7 +182,7 @@ public class SagaMonitoringService {
             metrics.incrementFailureCount();
         }
 
-        log.warn("Recorded message failed: type={}, saga={}, reason={}",
+        log.warn(Constant.LOG_RECORDED_MESSAGE_FAILED,
                 messageType, sagaId, reason);
     }
 
@@ -214,7 +216,7 @@ public class SagaMonitoringService {
     @Scheduled(fixedRate = 60000) // Every minute
     public void updateMetrics() {
         try {
-            log.debug("Updating saga metrics");
+            log.debug(Constant.LOG_UPDATING_METRICS);
 
             // Clean up old saga metrics (older than 1 hour)
             Instant oneHourAgo = Instant.now().minus(Duration.ofHours(1));
@@ -226,12 +228,12 @@ public class SagaMonitoringService {
 
             // Log current metrics
             HealthStatus health = getHealthStatus();
-            log.debug("Current saga metrics: active={}, processed={}, failures={}, failure_rate={:.2f}%",
+            log.debug(Constant.LOG_CURRENT_METRICS,
                     health.activeCount, health.totalProcessed, health.totalFailures,
                     health.failureRate * 100);
 
         } catch (Exception e) {
-            log.error("Error updating saga metrics", e);
+            log.error(Constant.LOG_ERROR_UPDATING_METRICS, e);
         }
     }
 
@@ -252,7 +254,7 @@ public class SagaMonitoringService {
         totalMessagesProcessed.set(0);
         totalSagaFailures.set(0);
 
-        log.info("Saga metrics reset");
+        log.info(Constant.LOG_METRICS_RESET);
     }
 
     /**

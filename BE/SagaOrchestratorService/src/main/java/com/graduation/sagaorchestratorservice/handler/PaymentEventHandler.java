@@ -1,5 +1,8 @@
+// ===================== PaymentEventHandler.java =====================
+
 package com.graduation.sagaorchestratorservice.handler;
 
+import com.graduation.sagaorchestratorservice.constants.Constant;
 import com.graduation.sagaorchestratorservice.service.OrderPurchaseSagaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -7,10 +10,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
-/**
- * Handler for Payment Service events
- * Processes payment-related events and coordinates with saga service
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -22,28 +21,16 @@ public class PaymentEventHandler {
      * Handle payment events from Payment Service
      */
     public void handlePaymentEvent(Map<String, Object> event) {
-        String eventType = (String) event.get("type");
-        String sagaId = (String) event.get("sagaId");
+        String eventType = (String) event.get(Constant.FIELD_TYPE);
+        String sagaId = (String) event.get(Constant.FIELD_SAGA_ID);
 
-        log.debug("Processing payment event type: {} for saga: {}", eventType, sagaId);
+        log.debug(Constant.LOG_PROCESSING_PAYMENT_EVENT, eventType, sagaId);
 
         // Validate required fields
         if (sagaId == null || sagaId.trim().isEmpty()) {
             log.warn("Received payment event without sagaId, ignoring: {}", event);
             return;
         }
-
-//        switch (eventType) {
-//            case "PAYMENT_PROCESSED":
-//                orhandlePaymentProcessedEvent(event);
-//                break;
-//            case "PAYMENT_FAILED":
-//                handlePaymentFailedEvent(event);
-//                break;
-//            default:
-//                log.debug("Unhandled payment event type: {}", eventType);
-//                break;
-//        }
 
         // Route event to saga service
         orderPurchaseSagaService.handleEventMessage(event);

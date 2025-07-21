@@ -1,5 +1,6 @@
 package com.graduation.orderservice.service;
 
+import com.graduation.orderservice.constant.Constant;
 import com.graduation.orderservice.model.Order;
 import com.graduation.orderservice.model.OrderStatus;
 import com.graduation.orderservice.model.ProcessedMessage;
@@ -26,6 +27,7 @@ public class OrderCommandHandlerService {
     private final OrderRepository orderRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final IdempotencyService idempotencyService;
+
     /**
      * Create a new order and trigger saga
      */
@@ -33,7 +35,7 @@ public class OrderCommandHandlerService {
     public Order createOrder(String userId, String userEmail, String userName,
                              String orderDescription, BigDecimal totalAmount) {
 
-        log.info("Creating order for user: {} with amount: {}", userId, totalAmount);
+        log.info(Constant.LOG_CREATING_ORDER, userId, totalAmount);
 
         try {
             /*
@@ -44,7 +46,7 @@ public class OrderCommandHandlerService {
 
             // Save to database
             Order savedOrder = orderRepository.save(order);
-            log.info("Order created successfully with ID: {}", savedOrder.getId());
+            log.info(Constant.LOG_ORDER_CREATED_SUCCESS, savedOrder.getId());
 
             // Publish event to trigger saga
             publishOrderCreatedEvent(savedOrder);
@@ -52,8 +54,8 @@ public class OrderCommandHandlerService {
             return savedOrder;
 
         } catch (Exception e) {
-            log.error("Error creating order for user: {}", userId, e);
-            throw new RuntimeException("Failed to create order: " + e.getMessage(), e);
+            log.error(Constant.LOG_ERROR_CREATING_ORDER, userId, e);
+            throw new RuntimeException(String.format(Constant.ERROR_FAILED_TO_CREATE_ORDER_RUNTIME, e.getMessage()), e);
         }
     }
 
@@ -64,27 +66,27 @@ public class OrderCommandHandlerService {
         try {
             // Create event payload
             Map<String, Object> event = new HashMap<>();
-            event.put("messageId", generateMessageId());
-            event.put("type", "ORDER_CREATED");
-            event.put("timestamp", System.currentTimeMillis());
+            event.put(Constant.FIELD_MESSAGE_ID, generateMessageId());
+            event.put(Constant.FIELD_TYPE, Constant.EVENT_ORDER_CREATED);
+            event.put(Constant.FIELD_TIMESTAMP, System.currentTimeMillis());
 
             // Order data for saga
-            event.put("orderId", order.getId());
-            event.put("userId", order.getUserId());
-            event.put("userEmail", order.getUserEmail());
-            event.put("userName", order.getUserName());
-            event.put("orderDescription", order.getOrderDescription());
-            event.put("totalAmount", order.getTotalAmount());
-            event.put("orderStatus", order.getStatus().name());
-            event.put("createdAt", order.getCreatedAt().toString());
+            event.put(Constant.FIELD_ORDER_ID, order.getId());
+            event.put(Constant.FIELD_USER_ID, order.getUserId());
+            event.put(Constant.FIELD_USER_EMAIL, order.getUserEmail());
+            event.put(Constant.FIELD_USER_NAME, order.getUserName());
+            event.put(Constant.FIELD_ORDER_DESCRIPTION, order.getOrderDescription());
+            event.put(Constant.FIELD_TOTAL_AMOUNT, order.getTotalAmount());
+            event.put(Constant.FIELD_ORDER_STATUS, order.getStatus().name());
+            event.put(Constant.FIELD_CREATED_AT, order.getCreatedAt().toString());
 
             // Publish to saga events topic
-            kafkaTemplate.send("order.events", order.getId().toString(), event);
+            kafkaTemplate.send(Constant.TOPIC_ORDER_EVENTS, order.getId().toString(), event);
 
-            log.info("Published ORDER_CREATED event for order: {} to trigger saga", order.getId());
+            log.info(Constant.LOG_PUBLISHED_ORDER_CREATED, order.getId());
 
         } catch (Exception e) {
-            log.error("Failed to publish ORDER_CREATED event for order: {}", order.getId(), e);
+            log.error(Constant.LOG_FAILED_PUBLISH_ORDER_CREATED, order.getId(), e);
             // Don't fail the order creation if event publishing fails
             // In production, you might want to retry or use a more robust mechanism
         }
@@ -96,11 +98,11 @@ public class OrderCommandHandlerService {
      */
     @Transactional
     public void updateOrderStatus(Long orderId, OrderStatus newStatus, String reason, String sagaId) {
-        log.info("Updating order {} status to {} for saga: {}", orderId, newStatus, sagaId);
+        log.info(Constant.LOG_UPDATING_ORDER_STATUS, orderId, newStatus, sagaId);
 
         Optional<Order> optionalOrder = orderRepository.findByIdWithHistories(orderId);
         if (optionalOrder.isEmpty()) {
-            throw new RuntimeException("Order not found: " + orderId);
+            throw new RuntimeException(String.format(Constant.ERROR_ORDER_NOT_FOUND_ID, orderId));
         }
 
         Order order = optionalOrder.get();
@@ -110,10 +112,10 @@ public class OrderCommandHandlerService {
             order.setSagaId(sagaId);
         }
         // Update status with history
-        order.updateStatus( newStatus, reason, "SAGA_ORCHESTRATOR");
+        order.updateStatus(newStatus, reason, Constant.ACTOR_SAGA_ORCHESTRATOR);
 
         orderRepository.save(order);
-        log.info("Order {} status updated to {} successfully", orderId, newStatus);
+        log.info(Constant.LOG_ORDER_STATUS_UPDATED, orderId, newStatus);
     }
 
     /**
@@ -121,19 +123,19 @@ public class OrderCommandHandlerService {
      */
     @Transactional
     public void cancelOrder(Long orderId, String reason, String sagaId) {
-        log.info("Cancelling order {} for saga: {}", orderId, sagaId);
+        log.info(Constant.LOG_CANCELLING_ORDER, orderId, sagaId);
 
         // Use a custom query to fetch with histories
         Optional<Order> optionalOrder = orderRepository.findByIdWithHistories(orderId);
         if (optionalOrder.isEmpty()) {
-            throw new RuntimeException("Order not found: " + orderId);
+            throw new RuntimeException(String.format(Constant.ERROR_ORDER_NOT_FOUND_ID, orderId));
         }
 
         Order order = optionalOrder.get();
-        order.cancel(reason, "SAGA_COMPENSATION");
+        order.cancel(reason, Constant.ACTOR_SAGA_COMPENSATION);
 
         orderRepository.save(order);
-        log.info("Order {} cancelled successfully", orderId);
+        log.info(Constant.LOG_ORDER_CANCELLED_SUCCESS, orderId);
     }
 
     /**
@@ -141,36 +143,35 @@ public class OrderCommandHandlerService {
      */
     public void handleUpdateOrderConfirmed(Map<String, Object> command) {
 
-        Map<String, Object> payload = (Map<String, Object>) command.get("payload");
-        String messageId = (String) command.get("messageId");
+        Map<String, Object> payload = (Map<String, Object>) command.get(Constant.FIELD_PAYLOAD);
+        String messageId = (String) command.get(Constant.FIELD_MESSAGE_ID);
 
-        String sagaId = command.get("sagaId").toString();
+        String sagaId = command.get(Constant.FIELD_SAGA_ID).toString();
         //idempotency check
         if (idempotencyService.isProcessed(messageId, sagaId)) {
-            log.info("Command already processed: messageId={}, sagaId={}", messageId, sagaId);
+            log.info(Constant.LOG_MESSAGE_ALREADY_PROCESSED, messageId, sagaId);
             return; // Skip processing if already handled
         }
-        String reason = (String) payload.getOrDefault("reason", "Order confirmed successfully");
-        Long orderId = Long.valueOf(payload.get("orderId").toString());
+        String reason = (String) payload.getOrDefault(Constant.FIELD_REASON, Constant.REASON_ORDER_CONFIRMED_SUCCESS);
+        Long orderId = Long.valueOf(payload.get(Constant.FIELD_ORDER_ID).toString());
 
         // validate reason and orderId
         if (validatePayload(sagaId, messageId, orderId, reason)) return;
 
         try {
-            log.info("Updating order {} to CONFIRMED for saga: {}", orderId, sagaId);
+            log.info(Constant.LOG_UPDATING_ORDER_CONFIRMED, orderId, sagaId);
             updateOrderStatus(orderId, OrderStatus.CONFIRMED, reason, sagaId);
             idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.SUCCESS);
 
             // Publish success event
-            publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATED_CONFIRMED", true,
-                    "Order status updated to CONFIRMED", null);
+            publishOrderEvent(sagaId, orderId, Constant.EVENT_ORDER_STATUS_UPDATED_CONFIRMED, true,
+                    Constant.STATUS_DESC_CONFIRMED, null);
             //record idempotency
 
-
         } catch (Exception e) {
-            log.error("Error updating order to confirmed: {}", e.getMessage(), e);
+            log.error(Constant.LOG_ERROR_UPDATING_CONFIRMED, e.getMessage(), e);
             idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.FAILED);
-            publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATE_FAILED", false,
+            publishOrderEvent(sagaId, orderId, Constant.EVENT_ORDER_STATUS_UPDATE_FAILED, false,
                     null, e.getMessage());
         }
     }
@@ -179,23 +180,23 @@ public class OrderCommandHandlerService {
      * Handle order update delivered command
      */
     public void handleUpdateOrderDelivered(Map<String, Object> command) {
-        String sagaId = (String) command.get("sagaId");
-        String messageId = (String) command.get("messageId");
+        String sagaId = (String) command.get(Constant.FIELD_SAGA_ID);
+        String messageId = (String) command.get(Constant.FIELD_MESSAGE_ID);
         // Idempotency check
         if (idempotencyService.isProcessed(messageId, sagaId)) {
-            log.info("Command already processed: messageId={}, sagaId={}", messageId, sagaId);
+            log.info(Constant.LOG_MESSAGE_ALREADY_PROCESSED, messageId, sagaId);
             return; // Skip processing if already handled
         }
 
         // Extract payload first (consistent with other handlers)
-        Map<String, Object> payload = (Map<String, Object>) command.get("payload");
+        Map<String, Object> payload = (Map<String, Object>) command.get(Constant.FIELD_PAYLOAD);
 
-        Long orderId = Long.valueOf(payload.get("orderId").toString());
-        String reason = (String) payload.getOrDefault("reason", "Order delivered successfully");
+        Long orderId = Long.valueOf(payload.get(Constant.FIELD_ORDER_ID).toString());
+        String reason = (String) payload.getOrDefault(Constant.FIELD_REASON, Constant.REASON_ORDER_DELIVERED_SUCCESS);
         // Validate orderId and reason
         if (validatePayload(sagaId, messageId, orderId, reason)) return;
 
-        log.info("Updating order {} to DELIVERED for saga: {}", orderId, sagaId);
+        log.info(Constant.LOG_UPDATING_ORDER_DELIVERED, orderId, sagaId);
 
         try {
 
@@ -203,39 +204,39 @@ public class OrderCommandHandlerService {
             updateOrderStatus(orderId, OrderStatus.DELIVERED, reason, sagaId);
 
             // Add 10-second delay before sending event to saga
-            log.info("Processing order delivery update for saga: {} - waiting 10 seconds...", sagaId);
+            log.info(Constant.LOG_PROCESSING_DELIVERY_WAIT, sagaId);
             try {
                 Thread.sleep(10000); // 10 seconds delay
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
-                log.warn("Thread interrupted during delay for saga: {}", sagaId);
+                log.warn(Constant.LOG_THREAD_INTERRUPTED, sagaId);
             }
             idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.SUCCESS);
 
             // Publish success event
-            publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATED_DELIVERED", true,
-                    "Order status updated to DELIVERED", null);
+            publishOrderEvent(sagaId, orderId, Constant.EVENT_ORDER_STATUS_UPDATED_DELIVERED, true,
+                    Constant.STATUS_DESC_DELIVERED, null);
 
             // Log saga completion
-            log.info("Saga {} completed successfully - Order {} delivered", sagaId, orderId);
+            log.info(Constant.LOG_SAGA_COMPLETED, sagaId, orderId);
 
         } catch (Exception e) {
-            log.error("Error updating order to delivered: {}", e.getMessage(), e);
+            log.error(Constant.LOG_ERROR_UPDATING_DELIVERED, e.getMessage(), e);
             idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.FAILED);
-            publishOrderEvent(sagaId, orderId, "ORDER_STATUS_UPDATE_FAILED", false,
+            publishOrderEvent(sagaId, orderId, Constant.EVENT_ORDER_STATUS_UPDATE_FAILED, false,
                     null, e.getMessage());
 
             // Log saga failure
-            log.error("Saga {} failed - Order {} delivery update failed: {}", sagaId, orderId, e.getMessage());
+            log.error(Constant.LOG_SAGA_FAILED, sagaId, orderId, e.getMessage());
         }
     }
 
     private boolean validatePayload(String sagaId, String messageId, Long orderId, String reason) {
         if (orderId <= 0 || reason == null || reason.isEmpty()) {
-            log.error("Invalid orderId: {} for sagaId: {}", orderId, sagaId);
+            log.error(Constant.LOG_INVALID_ORDER_ID, orderId, sagaId);
             idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.FAILED);
-            publishOrderEvent(sagaId, null, "ORDER_STATUS_UPDATE_FAILED", false,
-                    null, "Invalid order ID");
+            publishOrderEvent(sagaId, null, Constant.EVENT_ORDER_STATUS_UPDATE_FAILED, false,
+                    null, Constant.ERROR_INVALID_ORDER_ID);
             return true;
         }
         return false;
@@ -246,18 +247,18 @@ public class OrderCommandHandlerService {
      */
     public void handleCancelOrder(Map<String, Object> command) {
         //Idempotency check
-        String sagaId = (String) command.get("sagaId");
-        String messageId = (String) command.get("messageId");
+        String sagaId = (String) command.get(Constant.FIELD_SAGA_ID);
+        String messageId = (String) command.get(Constant.FIELD_MESSAGE_ID);
         if (idempotencyService.isProcessed(messageId, sagaId)) {
-            log.info("Command already processed: messageId={}, sagaId={}", messageId, sagaId);
+            log.info(Constant.LOG_MESSAGE_ALREADY_PROCESSED, messageId, sagaId);
             return; // Skip processing if already handled
         }
 
         // Extract payload first
-        Map<String, Object> payload = (Map<String, Object>) command.get("payload");
+        Map<String, Object> payload = (Map<String, Object>) command.get(Constant.FIELD_PAYLOAD);
 
-        Long orderId = Long.valueOf(payload.get("orderId").toString());
-        String reason = (String) payload.getOrDefault("reason", "Order cancelled by saga");
+        Long orderId = Long.valueOf(payload.get(Constant.FIELD_ORDER_ID).toString());
+        String reason = (String) payload.getOrDefault(Constant.FIELD_REASON, Constant.REASON_ORDER_CANCELLED_SAGA);
 
         try {
             // Validate orderId and reason
@@ -269,14 +270,14 @@ public class OrderCommandHandlerService {
 
             idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.SUCCESS);
             // Publish success event
-            publishOrderEvent(sagaId, orderId, "ORDER_CANCELLED", true,
-                    "Order cancelled successfully", null);
+            publishOrderEvent(sagaId, orderId, Constant.EVENT_ORDER_CANCELLED, true,
+                    Constant.STATUS_DESC_CANCELLED, null);
 
         } catch (Exception e) {
-            log.error("Error cancelling order: {}", e.getMessage(), e);
+            log.error(Constant.LOG_ERROR_CANCELLING_ORDER, e.getMessage(), e);
 
             idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.FAILED);
-            publishOrderEvent(sagaId, orderId, "ORDER_CANCELLATION_FAILED", false,
+            publishOrderEvent(sagaId, orderId, Constant.EVENT_ORDER_CANCELLATION_FAILED, false,
                     null, e.getMessage());
         }
     }
@@ -290,35 +291,33 @@ public class OrderCommandHandlerService {
             // TODO: Inject KafkaTemplate when available
             // For now, just log the event that would be published
 
-            log.info("Publishing order event: sagaId={}, orderId={}, eventType={}, success={}",
+            log.info(Constant.LOG_PUBLISHING_ORDER_EVENT,
                     sagaId, orderId, eventType, success);
 
             if (success) {
-                log.info("Order event success: {}", successMessage);
+                log.info(Constant.LOG_ORDER_EVENT_SUCCESS, successMessage);
             } else {
-                log.error("Order event failure: {}", errorMessage);
+                log.error(Constant.LOG_ORDER_EVENT_FAILURE, errorMessage);
             }
-
 
             Map<String, Object> event = new HashMap<>();
-            event.put("messageId", "ORDER_EVT_" + System.currentTimeMillis());
-            event.put("sagaId", sagaId);
-            event.put("type", eventType);
-            event.put("success", success);
-            event.put("orderId", orderId);
-            event.put("timestamp", System.currentTimeMillis());
+            event.put(Constant.FIELD_MESSAGE_ID, Constant.PREFIX_ORDER_EVENT + System.currentTimeMillis());
+            event.put(Constant.FIELD_SAGA_ID, sagaId);
+            event.put(Constant.FIELD_TYPE, eventType);
+            event.put(Constant.FIELD_SUCCESS, success);
+            event.put(Constant.FIELD_ORDER_ID, orderId);
+            event.put(Constant.FIELD_TIMESTAMP, System.currentTimeMillis());
 
             if (success) {
-                event.put("message", successMessage);
+                event.put(Constant.RESPONSE_MESSAGE, successMessage);
             } else {
-                event.put("errorMessage", errorMessage);
+                event.put(Constant.FIELD_ERROR_MESSAGE, errorMessage);
             }
 
-            kafkaTemplate.send("order.events", sagaId, event);
-
+            kafkaTemplate.send(Constant.TOPIC_ORDER_EVENTS, sagaId, event);
 
         } catch (Exception e) {
-            log.error("Error publishing order event: {}", e.getMessage(), e);
+            log.error(Constant.LOG_ERROR_PUBLISHING_EVENT, e.getMessage(), e);
         }
     }
 
@@ -326,7 +325,7 @@ public class OrderCommandHandlerService {
      * Generate unique message ID
      */
     private String generateMessageId() {
-        return "ORDER_MSG_" + System.currentTimeMillis() + "_" +
+        return Constant.PREFIX_ORDER_MESSAGE + System.currentTimeMillis() + "_" +
                 java.util.UUID.randomUUID().toString().substring(0, 8);
     }
 }

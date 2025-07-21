@@ -1,3 +1,5 @@
+import { ORDER } from '@/core/config/constants';
+
 export interface Order {
     id: string;
     userId: string;
@@ -5,7 +7,7 @@ export interface Order {
     userName: string;
     orderDescription: string;
     totalAmount: number;
-    status: 'CREATED' | 'CONFIRMED' | 'DELIVERED' | 'CANCELLED';
+    status: keyof typeof ORDER.STATUS;
     createdAt: string;
     updatedAt: string;
     sagaId?: string;

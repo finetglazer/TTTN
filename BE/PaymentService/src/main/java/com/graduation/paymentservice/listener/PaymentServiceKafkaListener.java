@@ -1,5 +1,6 @@
 package com.graduation.paymentservice.listener;
 
+import com.graduation.paymentservice.constant.Constant;
 import com.graduation.paymentservice.service.PaymentCommandHandlerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,34 +33,33 @@ public class PaymentServiceKafkaListener {
     )
     public void consumePaymentCommands(@Payload Map<String, Object> command, Acknowledgment ack) {
         try {
-            String commandType = (String) command.get("type");
-            String sagaId = (String) command.get("sagaId");
-            String messageId = (String) command.get("messageId");
+            String commandType = (String) command.get(Constant.FIELD_TYPE);
+            String sagaId = (String) command.get(Constant.FIELD_SAGA_ID);
+            String messageId = (String) command.get(Constant.FIELD_MESSAGE_ID);
 
-            log.info("Processing payment command type: {} for saga: {} messageId: {}",
-                    commandType, sagaId, messageId);
+            log.info(Constant.LOG_PROCESSING_PAYMENT_COMMAND, commandType, sagaId, messageId);
 
             // Route to appropriate handler based on command type
             switch (commandType) {
-                case "PAYMENT_PROCESS":
+                case Constant.COMMAND_PAYMENT_PROCESS:
                     commandHandlerService.handleProcessPayment(command);
                     break;
-                case "PAYMENT_REVERSE":
+                case Constant.COMMAND_PAYMENT_REVERSE:
                     commandHandlerService.handleReversePayment(command);
                     break;
                 default:
-                    log.warn("Unknown payment command type: {} for saga: {}", commandType, sagaId);
+                    log.warn(Constant.LOG_UNKNOWN_PAYMENT_COMMAND, commandType, sagaId);
                     break;
             }
 
             // Acknowledge the message
             ack.acknowledge();
-            log.debug("Payment command acknowledged: {} for saga: {}", commandType, sagaId);
+            log.debug(Constant.LOG_PAYMENT_COMMAND_ACKNOWLEDGED, commandType, sagaId);
 
         } catch (Exception e) {
-            log.error("Error processing payment command: {}", e.getMessage(), e);
+            log.error(Constant.LOG_ERROR_PROCESSING_PAYMENT_COMMAND, e.getMessage(), e);
             // Don't acknowledge - will be retried or sent to DLQ
-            throw new RuntimeException("Payment command processing failed", e);
+            throw new RuntimeException(Constant.ERROR_PAYMENT_COMMAND_PROCESSING_FAILED, e);
         }
     }
 }

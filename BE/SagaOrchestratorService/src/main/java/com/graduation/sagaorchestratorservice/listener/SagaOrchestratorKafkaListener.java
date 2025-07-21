@@ -1,5 +1,6 @@
 package com.graduation.sagaorchestratorservice.listener;
 
+import com.graduation.sagaorchestratorservice.constants.Constant;
 import com.graduation.sagaorchestratorservice.handler.OrderEventHandler;
 import com.graduation.sagaorchestratorservice.handler.PaymentEventHandler;
 import com.graduation.sagaorchestratorservice.handler.SagaEventHandler;
@@ -27,21 +28,19 @@ public class SagaOrchestratorKafkaListener {
 
     /**
      * Listen to order events from Order Service
-     * Handles events like: ORDER_STATUS_UPDATED_CONFIRMED, ORDER_STATUS_UPDATED_DELIVERED,
-     * ORDER_CANCELLED, ORDER_STATUS_UPDATE_FAILED, ORDER_CANCELLATION_FAILED
      */
     @KafkaListener(
             topics = "${kafka.topics.order-events}",
             containerFactory = "orderEventKafkaListenerContainerFactory",
-            groupId = "${spring.kafka.consumer.group-id}-order-events"
+            groupId = "${spring.kafka.consumer.group-id}" + Constant.GROUP_SUFFIX_ORDER_EVENTS
     )
     public void consumeOrderEvents(@Payload Map<String, Object> event, Acknowledgment ack) {
         try {
-            String eventType = (String) event.get("type");
-            String sagaId = (String) event.get("sagaId");
-            String messageId = (String) event.get("messageId");
+            String eventType = (String) event.get(Constant.FIELD_TYPE);
+            String sagaId = (String) event.get(Constant.FIELD_SAGA_ID);
+            String messageId = (String) event.get(Constant.FIELD_MESSAGE_ID);
 
-            log.info("Received order event type: {} for saga: {} messageId: {}",
+            log.info(Constant.LOG_RECEIVED_ORDER_EVENT,
                     eventType, sagaId, messageId);
 
             // Delegate to handler
@@ -49,31 +48,30 @@ public class SagaOrchestratorKafkaListener {
 
             // Acknowledge the message
             ack.acknowledge();
-            log.debug("Order event acknowledged: {} for saga: {}", eventType, sagaId);
+            log.debug(Constant.LOG_EVENT_ACKNOWLEDGED, eventType, sagaId);
 
         } catch (Exception e) {
-            log.error("Error processing order event: {}", e.getMessage(), e);
+            log.error(Constant.LOG_ERROR_PROCESSING_ORDER_EVENT, e.getMessage(), e);
             // Don't acknowledge - will be retried or sent to DLQ
-            throw new RuntimeException("Order event processing failed", e);
+            throw new RuntimeException(Constant.ERROR_ORDER_EVENT_PROCESSING_FAILED, e);
         }
     }
 
     /**
      * Listen to payment events from Payment Service
-     * Handles events like: PAYMENT_PROCESSED, PAYMENT_FAILED, PAYMENT_REVERSED, PAYMENT_CANCELLATION_FAILED
      */
     @KafkaListener(
             topics = "${kafka.topics.payment-events}",
             containerFactory = "paymentEventKafkaListenerContainerFactory",
-            groupId = "${spring.kafka.consumer.group-id}-payment-events"
+            groupId = "${spring.kafka.consumer.group-id}" + Constant.GROUP_SUFFIX_PAYMENT_EVENTS
     )
     public void consumePaymentEvents(@Payload Map<String, Object> event, Acknowledgment ack) {
         try {
-            String eventType = (String) event.get("type");
-            String sagaId = (String) event.get("sagaId");
-            String messageId = (String) event.get("messageId");
+            String eventType = (String) event.get(Constant.FIELD_TYPE);
+            String sagaId = (String) event.get(Constant.FIELD_SAGA_ID);
+            String messageId = (String) event.get(Constant.FIELD_MESSAGE_ID);
 
-            log.info("Received payment event type: {} for saga: {} messageId: {}",
+            log.info(Constant.LOG_RECEIVED_PAYMENT_EVENT,
                     eventType, sagaId, messageId);
 
             // Delegate to handler
@@ -81,31 +79,30 @@ public class SagaOrchestratorKafkaListener {
 
             // Acknowledge the message
             ack.acknowledge();
-            log.debug("Payment event acknowledged: {} for saga: {}", eventType, sagaId);
+            log.debug(Constant.LOG_EVENT_ACKNOWLEDGED, eventType, sagaId);
 
         } catch (Exception e) {
-            log.error("Error processing payment event: {}", e.getMessage(), e);
+            log.error(Constant.LOG_ERROR_PROCESSING_PAYMENT_EVENT, e.getMessage(), e);
             // Don't acknowledge - will be retried or sent to DLQ
-            throw new RuntimeException("Payment event processing failed", e);
+            throw new RuntimeException(Constant.ERROR_PAYMENT_EVENT_PROCESSING_FAILED, e);
         }
     }
 
     /**
      * Listen to saga-specific events (for monitoring and coordination)
-     * This can be used for saga-to-saga communication or external monitoring
      */
     @KafkaListener(
             topics = "${kafka.topics.saga-events}",
             containerFactory = "kafkaListenerContainerFactory",
-            groupId = "${spring.kafka.consumer.group-id}-saga-events"
+            groupId = "${spring.kafka.consumer.group-id}" + Constant.GROUP_SUFFIX_SAGA_EVENTS
     )
     public void consumeSagaEvents(@Payload Map<String, Object> event, Acknowledgment ack) {
         try {
-            String eventType = (String) event.get("type");
-            String sagaId = (String) event.get("sagaId");
-            String messageId = (String) event.get("messageId");
+            String eventType = (String) event.get(Constant.FIELD_TYPE);
+            String sagaId = (String) event.get(Constant.FIELD_SAGA_ID);
+            String messageId = (String) event.get(Constant.FIELD_MESSAGE_ID);
 
-            log.info("Received saga event type: {} for saga: {} messageId: {}",
+            log.info(Constant.LOG_RECEIVED_SAGA_EVENT,
                     eventType, sagaId, messageId);
 
             // Delegate to handler
@@ -113,12 +110,12 @@ public class SagaOrchestratorKafkaListener {
 
             // Acknowledge the message
             ack.acknowledge();
-            log.debug("Saga event acknowledged: {} for saga: {}", eventType, sagaId);
+            log.debug(Constant.LOG_EVENT_ACKNOWLEDGED, eventType, sagaId);
 
         } catch (Exception e) {
-            log.error("Error processing saga event: {}", e.getMessage(), e);
+            log.error(Constant.LOG_ERROR_PROCESSING_SAGA_EVENT, e.getMessage(), e);
             // Don't acknowledge - will be retried or sent to DLQ
-            throw new RuntimeException("Saga event processing failed", e);
+            throw new RuntimeException(Constant.ERROR_SAGA_EVENT_PROCESSING_FAILED, e);
         }
     }
 
@@ -128,10 +125,12 @@ public class SagaOrchestratorKafkaListener {
     @KafkaListener(
             topics = "${kafka.topics.dlq}",
             containerFactory = "kafkaListenerContainerFactory",
-            groupId = "${spring.kafka.consumer.group-id}-dlq"
+            groupId = "${spring.kafka.consumer.group-id}" + Constant.GROUP_SUFFIX_DLQ
     )
     public void consumeDlqMessages(@Payload Object messagePayload, Acknowledgment ack) {
         try {
+            log.warn(Constant.LOG_RECEIVED_DLQ_MESSAGE, messagePayload);
+
             // Delegate to handler
             sagaEventHandler.handleDlqMessage(messagePayload);
 
@@ -139,7 +138,7 @@ public class SagaOrchestratorKafkaListener {
             ack.acknowledge();
 
         } catch (Exception e) {
-            log.error("Error processing DLQ message: {}", e.getMessage(), e);
+            log.error(Constant.ERROR_PROCESSING_DLQ_MESSAGE, e.getMessage(), e);
             // Still acknowledge to prevent infinite loop in DLQ processing
             ack.acknowledge();
         }
@@ -147,15 +146,16 @@ public class SagaOrchestratorKafkaListener {
 
     /**
      * Health check listener (optional)
-     * Can be used to verify kafka connectivity and listener health
      */
     @KafkaListener(
-            topics = "saga.health.check",
+            topics = Constant.TOPIC_SAGA_HEALTH_CHECK,
             containerFactory = "kafkaListenerContainerFactory",
-            groupId = "${spring.kafka.consumer.group-id}-health"
+            groupId = "${spring.kafka.consumer.group-id}" + Constant.GROUP_SUFFIX_HEALTH
     )
     public void consumeHealthCheckMessages(@Payload Map<String, Object> message, Acknowledgment ack) {
         try {
+            log.debug(Constant.LOG_RECEIVED_HEALTH_CHECK, message.get(Constant.FIELD_TIMESTAMP));
+
             // Delegate to handler
             sagaEventHandler.handleHealthCheckMessage(message);
 
@@ -163,7 +163,7 @@ public class SagaOrchestratorKafkaListener {
             ack.acknowledge();
 
         } catch (Exception e) {
-            log.error("Error processing health check message: {}", e.getMessage(), e);
+            log.error(Constant.ERROR_PROCESSING_HEALTH_CHECK, e.getMessage(), e);
             ack.acknowledge(); // Still acknowledge to avoid blocking
         }
     }

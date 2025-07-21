@@ -1,5 +1,6 @@
 package com.graduation.orderservice.listener;
 
+import com.graduation.orderservice.constant.Constant;
 import com.graduation.orderservice.service.OrderCommandHandlerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,39 +36,37 @@ public class OrderServiceKafkaListener {
     )
     public void consumeOrderCommands(@Payload Map<String, Object> command, Acknowledgment ack) {
         try {
-            String commandType = (String) command.get("type");
-            String sagaId = (String) command.get("sagaId");
-            String messageId = (String) command.get("messageId");
+            String commandType = (String) command.get(Constant.FIELD_TYPE);
+            String sagaId = (String) command.get(Constant.FIELD_SAGA_ID);
+            String messageId = (String) command.get(Constant.FIELD_MESSAGE_ID);
 
-            log.info("Processing order command type: {} for saga: {} messageId: {}",
+            log.info(Constant.LOG_PROCESSING_ORDER_COMMAND,
                     commandType, sagaId, messageId);
 
             // Route to appropriate handler based on command type
             switch (commandType) {
-                case "ORDER_UPDATE_CONFIRMED":
+                case Constant.COMMAND_ORDER_UPDATE_CONFIRMED:
                     orderCommandHandlerService.handleUpdateOrderConfirmed(command);
                     break;
-                case "ORDER_UPDATE_DELIVERED":
+                case Constant.COMMAND_ORDER_UPDATE_DELIVERED:
                     orderCommandHandlerService.handleUpdateOrderDelivered(command);
                     break;
-                case "ORDER_CANCEL":
+                case Constant.COMMAND_ORDER_CANCEL:
                     orderCommandHandlerService.handleCancelOrder(command);
                     break;
                 default:
-                    log.warn("Unknown order command type: {} for saga: {}", commandType, sagaId);
+                    log.warn(Constant.LOG_UNKNOWN_ORDER_COMMAND, commandType, sagaId);
                     break;
             }
 
             // Acknowledge the message
             ack.acknowledge();
-            log.debug("Order command acknowledged: {} for saga: {}", commandType, sagaId);
+            log.debug(Constant.LOG_ORDER_COMMAND_ACKNOWLEDGED, commandType, sagaId);
 
         } catch (Exception e) {
-            log.error("Error processing order command: {}", e.getMessage(), e);
+            log.error(Constant.LOG_ERROR_PROCESSING_ORDER_COMMAND, e.getMessage(), e);
             // Don't acknowledge - will be retried or sent to DLQ
-            throw new RuntimeException("Order command processing failed", e);
+            throw new RuntimeException(Constant.ERROR_ORDER_COMMAND_PROCESSING_FAILED, e);
         }
     }
-
-
 }

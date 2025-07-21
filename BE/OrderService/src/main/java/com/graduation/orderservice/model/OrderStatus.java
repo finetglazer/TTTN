@@ -1,5 +1,6 @@
 package com.graduation.orderservice.model;
 
+import com.graduation.orderservice.constant.Constant;
 import lombok.Getter;
 
 /**
@@ -10,22 +11,22 @@ public enum OrderStatus {
     /**
      * Order has been created but not yet confirmed
      */
-    CREATED("Order has been created"),
+    CREATED(Constant.STATUS_DESC_CREATED),
 
     /**
      * Order has been confirmed and is being processed
      */
-    CONFIRMED("Order has been confirmed"),
+    CONFIRMED(Constant.STATUS_DESC_CONFIRMED),
 
     /**
      * Order has been delivered to the customer
      */
-    DELIVERED("Order has been delivered"),
+    DELIVERED(Constant.STATUS_DESC_DELIVERED),
 
     /**
      * Order has been cancelled
      */
-    CANCELLED("Order has been cancelled");
+    CANCELLED(Constant.STATUS_DESC_CANCELLED);
 
     private final String description;
 

@@ -1,5 +1,6 @@
 package com.graduation.orderservice.model;
 
+import com.graduation.orderservice.constant.Constant;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
@@ -19,11 +20,11 @@ import java.util.List;
  * Entity representing an order in the system
  */
 @Entity
-@Table(name = "orders", indexes = {
-        @Index(name = "idx_order_user_id", columnList = "userId"),
-        @Index(name = "idx_order_status", columnList = "status"),
-        @Index(name = "idx_order_saga_id", columnList = "sagaId"),
-        @Index(name = "idx_order_created_at", columnList = "createdAt")
+@Table(name = Constant.TABLE_ORDERS, indexes = {
+        @Index(name = Constant.INDEX_ORDER_USER_ID, columnList = Constant.COLUMN_USER_ID),
+        @Index(name = Constant.INDEX_ORDER_STATUS, columnList = Constant.COLUMN_STATUS),
+        @Index(name = Constant.INDEX_ORDER_SAGA_ID, columnList = Constant.COLUMN_SAGA_ID),
+        @Index(name = Constant.INDEX_ORDER_CREATED_AT, columnList = Constant.COLUMN_CREATED_AT)
 })
 @Data
 @NoArgsConstructor
@@ -36,45 +37,45 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "User ID cannot be blank")
-    @Column(name = "user_id", nullable = false)
+    @NotBlank(message = Constant.VALIDATION_USER_ID_BLANK)
+    @Column(name = Constant.COLUMN_USER_ID, nullable = false)
     private String userId;
 
-    @NotBlank(message = "User email cannot be blank")
-    @Email(message = "Invalid email format")
-    @Column(name = "user_email", nullable = false)
+    @NotBlank(message = Constant.VALIDATION_USER_EMAIL_BLANK)
+    @Email(message = Constant.VALIDATION_INVALID_EMAIL)
+    @Column(name = Constant.COLUMN_USER_EMAIL, nullable = false)
     private String userEmail;
 
-    @NotBlank(message = "User name cannot be blank")
-    @Column(name = "user_name", nullable = false)
+    @NotBlank(message = Constant.VALIDATION_USER_NAME_BLANK)
+    @Column(name = Constant.COLUMN_USER_NAME, nullable = false)
     private String userName;
 
-    @NotBlank(message = "Order description cannot be blank")
-    @Size(max = 1000, message = "Order description cannot exceed 1000 characters")
-    @Column(name = "order_description", nullable = false, length = 1000)
+    @NotBlank(message = Constant.VALIDATION_ORDER_DESCRIPTION_BLANK)
+    @Size(max = 1000, message = Constant.VALIDATION_ORDER_DESCRIPTION_SIZE)
+    @Column(name = Constant.COLUMN_ORDER_DESCRIPTION, nullable = false, length = 1000)
     private String orderDescription;
 
-    @NotNull(message = "Total amount cannot be null")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Total amount must be greater than 0")
-    @Digits(integer = 10, fraction = 2, message = "Total amount must have at most 10 integer digits and 2 decimal places")
-    @Column(name = "total_amount", nullable = false, precision = 12, scale = 2)
+    @NotNull(message = Constant.VALIDATION_TOTAL_AMOUNT_NULL)
+    @DecimalMin(value = "0.0", inclusive = false, message = Constant.VALIDATION_TOTAL_AMOUNT_MIN)
+    @Digits(integer = 10, fraction = 2, message = Constant.VALIDATION_TOTAL_AMOUNT_DIGITS)
+    @Column(name = Constant.COLUMN_TOTAL_AMOUNT, nullable = false, precision = 12, scale = 2)
     private BigDecimal totalAmount;
 
-    @NotNull(message = "Order status cannot be null")
+    @NotNull(message = Constant.VALIDATION_ORDER_STATUS_NULL)
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = Constant.COLUMN_STATUS, nullable = false)
     @Builder.Default
     private OrderStatus status = OrderStatus.CREATED;
 
     @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = Constant.COLUMN_CREATED_AT, nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at")
+    @Column(name = Constant.COLUMN_UPDATED_AT)
     private LocalDateTime updatedAt;
 
-    @Column(name = "saga_id")
+    @Column(name = Constant.COLUMN_SAGA_ID)
     private String sagaId;
 
     // Relationship with OrderHistory
@@ -107,17 +108,17 @@ public class Order {
 
         // Check current = CREATED, newStatus must be CONFIRMED or CANCELLED
         if (this.status.equals(OrderStatus.CREATED) && !newStatus.equals(OrderStatus.CONFIRMED) && !newStatus.equals(OrderStatus.CANCELLED)) {
-            throw new IllegalArgumentException("Invalid status transition from CREATED to " + newStatus);
+            throw new IllegalArgumentException(String.format(Constant.ERROR_INVALID_STATUS_TRANSITION, this.status, newStatus));
         }
 
         // Check current = CONFIRMED, newStatus must be DELIVERED or CANCELLED
         if (this.status.equals(OrderStatus.CONFIRMED) && !newStatus.equals(OrderStatus.DELIVERED) && !newStatus.equals(OrderStatus.CANCELLED)) {
-            throw new IllegalArgumentException("Invalid status transition from CONFIRMED to " + newStatus);
+            throw new IllegalArgumentException(String.format(Constant.ERROR_INVALID_STATUS_TRANSITION, this.status, newStatus));
         }
 
         // Validate status transition
         if (this.status.isFinalState()) {
-            throw new IllegalStateException("Cannot change status from final state: " + this.status);
+            throw new IllegalStateException(String.format(Constant.ERROR_CANNOT_CHANGE_FINAL_STATUS, this.status));
         }
 
         // Create history record
@@ -139,7 +140,7 @@ public class Order {
      */
     public void cancel(String reason, String cancelledBy) {
         if (!this.status.canBeCancelled()) {
-            throw new IllegalStateException("Order cannot be cancelled in current status: " + this.status);
+            throw new IllegalStateException(String.format(Constant.ERROR_CANNOT_CANCEL_STATUS, this.status));
         }
 
         updateStatus(OrderStatus.CANCELLED, reason, cancelledBy);
@@ -150,10 +151,10 @@ public class Order {
      */
     public void confirm(String confirmedBy) {
         if (this.status != OrderStatus.CREATED) {
-            throw new IllegalStateException("Order can only be confirmed from CREATED status, current: " + this.status);
+            throw new IllegalStateException(String.format(Constant.ERROR_CAN_ONLY_CONFIRM_CREATED, this.status));
         }
 
-        updateStatus(OrderStatus.CONFIRMED, "Order confirmed for processing", confirmedBy);
+        updateStatus(OrderStatus.CONFIRMED, Constant.REASON_ORDER_CONFIRMED, confirmedBy);
     }
 
     /**
@@ -161,10 +162,10 @@ public class Order {
      */
     public void markAsDelivered(String deliveredBy) {
         if (this.status != OrderStatus.CONFIRMED) {
-            throw new IllegalStateException("Order can only be delivered from CONFIRMED status, current: " + this.status);
+            throw new IllegalStateException(String.format(Constant.ERROR_CAN_ONLY_DELIVER_CONFIRMED, this.status));
         }
 
-        updateStatus(OrderStatus.DELIVERED, "Order successfully delivered", deliveredBy);
+        updateStatus(OrderStatus.DELIVERED, Constant.REASON_ORDER_DELIVERED, deliveredBy);
     }
 
     /**
@@ -203,7 +204,7 @@ public class Order {
 
     @Override
     public String toString() {
-        return String.format("Order{id=%d, userId='%s', status=%s, totalAmount=%s, sagaId='%s'}",
+        return String.format(Constant.FORMAT_ORDER_TOSTRING,
                 id, userId, status, totalAmount, sagaId);
     }
 

@@ -3,13 +3,14 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Header from '@/layouts/components/header';
+import { ORDER, FILTER_OPTIONS, COLORS } from '@/core/config/constants';
 
 interface Order {
     id: string;
     orderNumber: string;
     customerName: string;
     amount: number;
-    status: 'CREATED' | 'CONFIRMED' | 'DELIVERED' | 'CANCELLED';
+    status: keyof typeof ORDER.STATUS;
     createdAt: string;
     items: string[];
 }
@@ -21,7 +22,7 @@ const mockOrders: Order[] = [
         orderNumber: 'ORD-001',
         customerName: 'John Doe',
         amount: 125.50,
-        status: 'DELIVERED',
+        status: ORDER.STATUS.DELIVERED,
         createdAt: '2025-01-15',
         items: ['Laptop', 'Mouse']
     },
@@ -30,7 +31,7 @@ const mockOrders: Order[] = [
         orderNumber: 'ORD-002',
         customerName: 'Jane Smith',
         amount: 89.99,
-        status: 'CONFIRMED',
+        status: ORDER.STATUS.CONFIRMED,
         createdAt: '2025-01-14',
         items: ['Headphones']
     },
@@ -39,7 +40,7 @@ const mockOrders: Order[] = [
         orderNumber: 'ORD-003',
         customerName: 'Bob Johnson',
         amount: 299.00,
-        status: 'CREATED',
+        status: ORDER.STATUS.CREATED,
         createdAt: '2025-01-13',
         items: ['Monitor', 'Keyboard', 'Mouse']
     },
@@ -48,7 +49,7 @@ const mockOrders: Order[] = [
         orderNumber: 'ORD-004',
         customerName: 'Alice Brown',
         amount: 45.75,
-        status: 'CANCELLED',
+        status: ORDER.STATUS.CANCELLED,
         createdAt: '2025-01-12',
         items: ['Cable']
     }
@@ -57,16 +58,16 @@ const mockOrders: Order[] = [
 export default function DashboardPage() {
     const [orders] = useState<Order[]>(mockOrders);
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState<string>('ALL');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
     const [currentPage, setCurrentPage] = useState(1);
-    const ordersPerPage = 10;
+    const ordersPerPage = ORDER.PAGINATION.ORDERS_PER_PAGE;
 
     // Filter and search orders
     const filteredOrders = useMemo(() => {
         return orders.filter(order => {
             const matchesSearch = order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 order.customerName.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesStatus = statusFilter === 'ALL' || order.status === statusFilter;
+            const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
             return matchesSearch && matchesStatus;
         });
     }, [orders, searchTerm, statusFilter]);
@@ -79,10 +80,10 @@ export default function DashboardPage() {
     const getStatusBadgeClass = (status: string) => {
         const baseClass = 'status-badge ';
         switch (status) {
-            case 'CREATED': return baseClass + 'status-created';
-            case 'CONFIRMED': return baseClass + 'status-confirmed';
-            case 'DELIVERED': return baseClass + 'status-delivered';
-            case 'CANCELLED': return baseClass + 'status-cancelled';
+            case ORDER.STATUS.CREATED: return baseClass + 'status-created';
+            case ORDER.STATUS.CONFIRMED: return baseClass + 'status-confirmed';
+            case ORDER.STATUS.DELIVERED: return baseClass + 'status-delivered';
+            case ORDER.STATUS.CANCELLED: return baseClass + 'status-cancelled';
             default: return baseClass + 'bg-gray-500 text-white';
         }
     };
@@ -124,17 +125,15 @@ export default function DashboardPage() {
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value)}
                             >
-                                <option value="ALL">All Status</option>
-                                <option value="CREATED">Created</option>
-                                <option value="CONFIRMED">Confirmed</option>
-                                <option value="DELIVERED">Delivered</option>
-                                <option value="CANCELLED">Cancelled</option>
+                                {FILTER_OPTIONS.map(option => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
                             </select>
 
                             <button
                                 onClick={() => {
                                     setSearchTerm('');
-                                    setStatusFilter('ALL');
+                                    setStatusFilter('all');
                                 }}
                                 className="btn-ghost"
                             >
@@ -204,11 +203,14 @@ export default function DashboardPage() {
                                         <div className="flex items-center gap-2">
                                             <Link
                                                 href={`/order/${order.id}`}
-                                                className="text-[#f6d55c] hover:text-[#e6c53f] font-medium"
+                                                className="font-medium"
+                                                style={{color: COLORS.PRIMARY_GOLD}}
+                                                onMouseEnter={(e) => e.target.style.color = COLORS.GOLD_HOVER}
+                                                onMouseLeave={(e) => e.target.style.color = COLORS.PRIMARY_GOLD}
                                             >
                                                 View Details
                                             </Link>
-                                            {(order.status === 'CREATED' || order.status === 'CONFIRMED') && (
+                                            {(order.status === ORDER.STATUS.CREATED || order.status === ORDER.STATUS.CONFIRMED) && (
                                                 <button className="text-[#f56565] hover:text-red-700 text-sm ml-2">
                                                     Cancel
                                                 </button>
@@ -238,7 +240,13 @@ export default function DashboardPage() {
                                     onClick={() => setCurrentPage(page)}
                                     className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                                         currentPage === page
-                                            ? 'bg-[#f6d55c] text-[#1a1a1a]'
+                                            ? `text-black`
+                                        : 'text-[#718096] hover:bg-gray-100'
+                                    }`}
+                                    style={{
+                                        backgroundColor: currentPage === page ? COLORS.PRIMARY_GOLD : undefined,
+                                        color: currentPage === page ? COLORS.DEEP_CHARCOAL : undefined
+                                    }}
                                             : 'text-[#718096] hover:bg-gray-100'
                                     }`}
                                 >

@@ -1,5 +1,6 @@
 package com.graduation.sagaorchestratorservice.service;
 
+import com.graduation.sagaorchestratorservice.constants.Constant;
 import com.graduation.sagaorchestratorservice.exception.SagaExecutionException;
 import com.graduation.sagaorchestratorservice.exception.SagaNotFoundException;
 import com.graduation.sagaorchestratorservice.model.OrderPurchaseSagaState;
@@ -62,14 +63,14 @@ public class OrderPurchaseSagaService {
      */
     @Transactional
     public OrderPurchaseSagaState startSaga(String userId, Long orderId, String userEmail,
-                                       String userName, String orderDescription, BigDecimal totalAmount) {
+                                            String userName, String orderDescription, BigDecimal totalAmount) {
 
-        log.info("Starting order purchase saga for order: {} user: {}", orderId, userId);
+        log.info(Constant.LOG_STARTING_ORDER_PURCHASE_SAGA, orderId, userId);
 
         // Check if saga already exists for this order
         Optional<OrderPurchaseSagaState> existingSaga = sagaRepository.findByOrderId(orderId);
         if (existingSaga.isPresent()) {
-            log.warn("Saga already exists for order: {}", orderId);
+            log.warn(Constant.LOG_SAGA_ALREADY_EXISTS, orderId);
             return existingSaga.get();
         }
 
@@ -88,7 +89,7 @@ public class OrderPurchaseSagaService {
         // Process the first step (PROCESS_PAYMENT)
         processNextStep(saga);
 
-        log.info("Order purchase saga started successfully: {}", sagaId);
+        log.info(Constant.LOG_ORDER_PURCHASE_SAGA_STARTED, sagaId);
         return saga;
     }
 
@@ -97,7 +98,7 @@ public class OrderPurchaseSagaService {
      */
     @Transactional
     public void processNextStep(OrderPurchaseSagaState saga) {
-        log.debug("Processing step [{}] for saga: {}", saga.getCurrentStep(), saga.getSagaId());
+        log.debug(Constant.LOG_PROCESSING_STEP, saga.getCurrentStep(), saga.getSagaId());
 
         // Handle completion
         if (saga.getCurrentStep() == OrderPurchaseSagaStep.COMPLETE_SAGA) {
@@ -128,11 +129,11 @@ public class OrderPurchaseSagaService {
                     targetTopic
             );
 
-            log.info("Published command [{}] for saga [{}] to topic: {}",
+            log.info(Constant.LOG_PUBLISHED_COMMAND,
                     saga.getCurrentStep().getCommandType(), saga.getSagaId(), targetTopic);
 
         } catch (Exception e) {
-            log.error("Error processing step {} for saga {}", saga.getCurrentStep(), saga.getSagaId(), e);
+            log.error(Constant.LOG_ERROR_PROCESSING_STEP, saga.getCurrentStep(), saga.getSagaId(), e);
             handleStepFailure(saga, "Failed to process step: " + e.getMessage());
         }
     }
@@ -142,11 +143,11 @@ public class OrderPurchaseSagaService {
      */
     @Transactional
     public void handleEventMessage(Map<String, Object> eventData) {
-        String sagaId = (String) eventData.get("sagaId");
-        String eventType = (String) eventData.get("type");
-        Boolean success = (Boolean) eventData.get("success");
+        String sagaId = (String) eventData.get(Constant.FIELD_SAGA_ID);
+        String eventType = (String) eventData.get(Constant.FIELD_TYPE);
+        Boolean success = (Boolean) eventData.get(Constant.FIELD_SUCCESS);
 
-        log.debug("Handling event [{}] for saga: {}", eventType, sagaId);
+        log.debug(Constant.LOG_HANDLING_EVENT, eventType, sagaId);
 
         // Use saga-specific lock to prevent race conditions
         ReentrantLock lock = getSagaLock(sagaId);
@@ -162,20 +163,20 @@ public class OrderPurchaseSagaService {
             OrderPurchaseSagaState saga = optionalSaga.get();
 
             // Check idempotency
-            String messageId = (String) eventData.get("messageId");
+            String messageId = (String) eventData.get(Constant.FIELD_MESSAGE_ID);
             ActionType actionType = isCompensationEvent(eventType) ? ActionType.COMPENSATION : ActionType.FORWARD;
 
             if (idempotencyService.isProcessed(messageId, sagaId,
                     saga.getCurrentStep() != null ? saga.getCurrentStep().getStepNumber() : null,
                     eventType, actionType)) {
-                log.info("Event [{}] for saga [{}] has already been processed", eventType, sagaId);
+                log.info(Constant.LOG_EVENT_ALREADY_PROCESSED, eventType, sagaId);
                 return;
             }
 
             try {
                 // Validate event matches current step
                 if (!isEventForCurrentStep(saga, eventType)) {
-                    log.warn("Event [{}] doesn't match current step [{}] for saga [{}]",
+                    log.warn(Constant.LOG_EVENT_IGNORED_WRONG_STEP,
                             eventType, saga.getCurrentStep(), sagaId);
                     recordEventProcessing(eventData, saga, "Event ignored - doesn't match current step");
                     return;
@@ -199,7 +200,7 @@ public class OrderPurchaseSagaService {
             lock.unlock();
         }
     }
-    
+
     // Helper method to determine if event is compensation
     private boolean isCompensationEvent(String eventType) {
         return eventType.contains("FAILED") || eventType.contains("COMPENSATION") || eventType.contains("ROLLBACK");
@@ -209,8 +210,8 @@ public class OrderPurchaseSagaService {
      * Process a successful event
      */
     private void processSuccessEvent(OrderPurchaseSagaState saga, Map<String, Object> eventData) {
-        String eventType = (String) eventData.get("type");
-        log.info("Processing success event [{}] for saga [{}]", eventType, saga.getSagaId());
+        String eventType = (String) eventData.get(Constant.FIELD_TYPE);
+        log.info(Constant.LOG_PROCESSING_SUCCESS_EVENT, eventType, saga.getSagaId());
 
         // Update saga with event data
         updateSagaWithEventData(saga, eventData);
@@ -241,10 +242,10 @@ public class OrderPurchaseSagaService {
      * Process a failure event
      */
     private void processFailureEvent(OrderPurchaseSagaState saga, Map<String, Object> eventData) {
-        String eventType = (String) eventData.get("type");
-        String errorMessage = (String) eventData.get("errorMessage");
+        String eventType = (String) eventData.get(Constant.FIELD_TYPE);
+        String errorMessage = (String) eventData.get(Constant.FIELD_ERROR_MESSAGE);
 
-        log.warn("Processing failure event [{}] for saga [{}]: {}", eventType, saga.getSagaId(), errorMessage);
+        log.warn(Constant.LOG_PROCESSING_FAILURE_EVENT, eventType, saga.getSagaId(), errorMessage);
 
         // Record monitoring
         monitoringService.recordMessageFailed(saga.getSagaId(), eventType, errorMessage);
@@ -252,10 +253,10 @@ public class OrderPurchaseSagaService {
         // Check if this is a compensation step failure
         if (saga.getStatus() == SagaStatus.COMPENSATING) {
             // Handle compensation step failure
-            handleCompensationStepFailure(saga, errorMessage != null ? errorMessage : "Compensation step failed");
+            handleCompensationStepFailure(saga, errorMessage != null ? errorMessage : Constant.ERROR_STEP_FAILED);
         } else {
             // Handle normal step failure
-            handleStepFailure(saga, errorMessage != null ? errorMessage : "Step failed without specific reason");
+            handleStepFailure(saga, errorMessage != null ? errorMessage : Constant.ERROR_STEP_FAILED);
         }
     }
 
@@ -263,7 +264,7 @@ public class OrderPurchaseSagaService {
      * Handle step failure and start compensation if needed
      */
     private void handleStepFailure(OrderPurchaseSagaState saga, String reason) {
-        log.warn("Handling step failure for saga [{}]: {}", saga.getSagaId(), reason);
+        log.warn(Constant.LOG_HANDLING_STEP_FAILURE, saga.getSagaId(), reason);
 
         saga.handleFailure(reason, saga.getCurrentStep().name());
 
@@ -284,7 +285,7 @@ public class OrderPurchaseSagaService {
      * Start compensation process
      */
     private void startCompensation(OrderPurchaseSagaState saga) {
-        log.info("Starting compensation for saga: {}", saga.getSagaId());
+        log.info(Constant.LOG_STARTING_COMPENSATION, saga.getSagaId());
 
         saga.startCompensation();
         sagaRepository.save(saga);
@@ -298,7 +299,7 @@ public class OrderPurchaseSagaService {
      */
     private void handleCompensationStepSuccess(OrderPurchaseSagaState saga) {
         OrderPurchaseSagaStep currentStep = saga.getCurrentStep();
-        log.debug("Compensation step [{}] completed for saga: {}", currentStep, saga.getSagaId());
+        log.debug(Constant.LOG_COMPENSATION_STEP_COMPLETED, currentStep, saga.getSagaId());
 
         // Add compensation step to completed steps
         saga.getCompletedSteps().add(currentStep.name());
@@ -315,25 +316,26 @@ public class OrderPurchaseSagaService {
             saga.setCurrentStep(nextStep);
             saga.setCurrentStepStartTime(Instant.now());
             saga.setLastUpdatedTime(Instant.now());
-            saga.addEvent(SagaEvent.of("COMPENSATION_STEP",
+            saga.addEvent(SagaEvent.of(Constant.SAGA_EVENT_COMPENSATION_STEP,
                     "Moving to compensation step: " + nextStep.getDescription()));
         }
     }
+
 
     /**
      * Handle failed compensation step
      */
     private void handleCompensationStepFailure(OrderPurchaseSagaState saga, String reason) {
-        log.warn("🚨 Compensation step FAILED for saga [{}]: {}", saga.getSagaId(), reason);
+        log.warn(Constant.LOG_COMPENSATION_STEP_FAILED, saga.getSagaId(), reason);
 
         // Retry compensation or mark as compensation failed
         if (saga.getCompensationRetryCount() < saga.getMaxCompensationRetries()) {
             // Retry compensation step
             saga.incrementCompensationRetryCount();
-            saga.addEvent(SagaEvent.of("COMPENSATION_RETRY",
+            saga.addEvent(SagaEvent.of(Constant.SAGA_EVENT_COMPENSATION_RETRY,
                     "Retrying compensation step " + saga.getCurrentStep() + " (attempt " + saga.getCompensationRetryCount() + ")"));
 
-            log.info("🔄 Retrying compensation step for saga [{}], attempt {}/{}",
+            log.info(Constant.LOG_RETRYING_COMPENSATION,
                     saga.getSagaId(), saga.getCompensationRetryCount(), saga.getMaxCompensationRetries());
 
             sagaRepository.save(saga);
@@ -343,21 +345,22 @@ public class OrderPurchaseSagaService {
 
         } else {
             // Mark as compensation failed - manual intervention needed
-            log.error("❌ COMPENSATION FAILED for saga [{}] after {} retries. Manual intervention required!",
+            log.error(Constant.LOG_COMPENSATION_FAILED_FINAL,
                     saga.getSagaId(), saga.getMaxCompensationRetries());
 
             saga.setStatus(SagaStatus.COMPENSATION_FAILED);
             saga.setEndTime(Instant.now());
-            saga.addEvent(SagaEvent.of("COMPENSATION_FAILED",
-                    "Compensation failed after " + saga.getMaxCompensationRetries() + " retries: " + reason));
+            saga.addEvent(SagaEvent.of(Constant.SAGA_EVENT_COMPENSATION_FAILED,
+                    String.format(Constant.DESC_COMPENSATION_FAILED, saga.getMaxCompensationRetries(), reason)));
 
             sagaRepository.save(saga);
 
             // Record the compensation failure
             monitoringService.recordSagaFailed(saga.getSagaId(),
-                    "Compensation failed after retries: " + reason);
+                    String.format(Constant.ERROR_COMPENSATION_FAILED, reason));
         }
     }
+
 
     /**
      * Complete saga successfully
@@ -371,7 +374,7 @@ public class OrderPurchaseSagaService {
 
         sagaRepository.save(saga);
         monitoringService.recordSagaCompleted(saga.getSagaId());
-        
+
         // Clean up locks for completed saga
         cleanupCompletedSagaLocks(saga.getSagaId());
     }
@@ -381,43 +384,40 @@ public class OrderPurchaseSagaService {
      */
     private Map<String, Object> createCommandForCurrentStep(OrderPurchaseSagaState saga) {
         Map<String, Object> command = new HashMap<>();
-        command.put("sagaId", saga.getSagaId());
-        command.put("messageId", UUID.randomUUID().toString());
-        command.put("timestamp", System.currentTimeMillis());
+        command.put(Constant.FIELD_SAGA_ID, saga.getSagaId());
+        command.put(Constant.FIELD_MESSAGE_ID, UUID.randomUUID().toString());
+        command.put(Constant.FIELD_TIMESTAMP, System.currentTimeMillis());
 
         // Add step-specific payload
         switch (saga.getCurrentStep()) {
             case PROCESS_PAYMENT:
-                command.put("orderId", saga.getOrderId().toString());
-                command.put("userId", saga.getUserId());
-//                command.put("userEmail", saga.getUserEmail());
-//                command.put("userName", saga.getUserName());
-//                command.put("orderDescription", saga.getOrderDescription());
-                command.put("totalAmount", saga.getTotalAmount());
+                command.put(Constant.FIELD_ORDER_ID, saga.getOrderId().toString());
+                command.put(Constant.FIELD_USER_ID, saga.getUserId());
+                command.put(Constant.FIELD_TOTAL_AMOUNT, saga.getTotalAmount());
                 break;
 
             case UPDATE_ORDER_STATUS_CONFIRMED:
-                command.put("orderId", saga.getOrderId().toString());
-                command.put("newStatus", "CONFIRMED");
-                command.put("reason", "Payment processed successfully");
+                command.put(Constant.FIELD_ORDER_ID, saga.getOrderId().toString());
+                command.put(Constant.FIELD_NEW_STATUS, Constant.ORDER_STATUS_CONFIRMED);
+                command.put(Constant.FIELD_REASON, Constant.REASON_PAYMENT_PROCESSED_SUCCESS);
                 break;
 
             case UPDATE_ORDER_STATUS_DELIVERED:
-                command.put("orderId", saga.getOrderId().toString());
-                command.put("newStatus", "DELIVERED");
-                command.put("reason", "Order confirmed - ready for delivery");
+                command.put(Constant.FIELD_ORDER_ID, saga.getOrderId().toString());
+                command.put(Constant.FIELD_NEW_STATUS, Constant.ORDER_STATUS_DELIVERED);
+                command.put(Constant.FIELD_REASON, Constant.REASON_ORDER_CONFIRMED_SUCCESS);
                 break;
 
             case CANCEL_PAYMENT:
-                command.put("orderId", saga.getOrderId().toString());
-                command.put("paymentTransactionId", saga.getPaymentTransactionId());
-                command.put("reason", saga.getFailureReason());
+                command.put(Constant.FIELD_ORDER_ID, saga.getOrderId().toString());
+                command.put(Constant.FIELD_PAYMENT_TRANSACTION_ID, saga.getPaymentTransactionId());
+                command.put(Constant.FIELD_REASON, saga.getFailureReason());
                 break;
 
             case CANCEL_ORDER:
-                command.put("orderId", saga.getOrderId().toString());
-                command.put("reason", saga.getFailureReason());
-                command.put("cancelledBy", "SAGA_COMPENSATION");
+                command.put(Constant.FIELD_ORDER_ID, saga.getOrderId().toString());
+                command.put(Constant.FIELD_REASON, saga.getFailureReason());
+                command.put(Constant.FIELD_CANCELLED_BY, Constant.ACTOR_SAGA_COMPENSATION);
                 break;
 
             default:
@@ -540,7 +540,7 @@ public class OrderPurchaseSagaService {
             saga.incrementRetryCount();
             saga.addEvent(SagaEvent.of("RETRY", "Retrying step " + saga.getCurrentStep() + " after timeout (attempt " + saga.getRetryCount() + ")"));
             sagaRepository.save(saga);
-            
+
             // Apply exponential backoff delay
             scheduleRetryWithDelay(saga);
         } else {
@@ -563,7 +563,7 @@ public class OrderPurchaseSagaService {
             Optional<OrderPurchaseSagaState> optionalSaga = sagaRepository.findById(sagaId);
             if (optionalSaga.isPresent()) {
                 OrderPurchaseSagaState saga = optionalSaga.get();
-                
+
                 // Only handle timeout if saga is still active
                 if (saga.getStatus().isActive()) {
                     handleSagaTimeout(saga);
@@ -583,10 +583,10 @@ public class OrderPurchaseSagaService {
      */
     private void scheduleRetryWithDelay(OrderPurchaseSagaState saga) {
         long delayMs = calculateRetryDelay(saga.getRetryCount());
-        
-        log.info("Scheduling retry for saga {} with delay of {}ms (attempt {})", 
+
+        log.info("Scheduling retry for saga {} with delay of {}ms (attempt {})",
                 saga.getSagaId(), delayMs, saga.getRetryCount());
-        
+
         // Use CompletableFuture for async delay
         java.util.concurrent.CompletableFuture.delayedExecutor(delayMs, java.util.concurrent.TimeUnit.MILLISECONDS)
             .execute(() -> {
@@ -597,7 +597,7 @@ public class OrderPurchaseSagaService {
                         OrderPurchaseSagaState currentSaga = optionalSaga.get();
                         // Only retry if still in a retryable state
                         if (currentSaga.getStatus().isActive() && currentSaga.getRetryCount() <= currentSaga.getMaxRetries()) {
-                            log.info("Executing delayed retry for saga {} (attempt {})", 
+                            log.info("Executing delayed retry for saga {} (attempt {})",
                                     currentSaga.getSagaId(), currentSaga.getRetryCount());
                             processNextStep(currentSaga);
                         } else {
@@ -619,14 +619,14 @@ public class OrderPurchaseSagaService {
     private long calculateRetryDelay(int retryCount) {
         // Base delay in milliseconds
         long baseDelayMs = baseRetryDelaySeconds * 1000L;
-        
+
         // Exponential backoff: base * 2^(retryCount-1)
         long exponentialDelay = baseDelayMs * (1L << (retryCount - 1));
-        
+
         // Add jitter (±20% random variation)
         double jitter = 0.8 + (Math.random() * 0.4); // 0.8 to 1.2
         long delayWithJitter = Math.round(exponentialDelay * jitter);
-        
+
         // Cap at maximum delay (60 seconds)
         long maxDelayMs = 60 * 1000L;
         return Math.min(delayWithJitter, maxDelayMs);
@@ -668,7 +668,7 @@ public class OrderPurchaseSagaService {
      */
     @Transactional
     public OrderPurchaseSagaState cancelSagaByUser(String sagaId) throws SagaNotFoundException, SagaExecutionException {
-        log.info("Processing user cancellation request for saga: {}", sagaId);
+        log.info(Constant.LOG_CANCELLING_SAGA, sagaId);
 
         Optional<OrderPurchaseSagaState> optionalSaga = sagaRepository.findById(sagaId);
         if (optionalSaga.isEmpty()) {
@@ -679,11 +679,11 @@ public class OrderPurchaseSagaService {
 
         // Check if saga can be cancelled
         if (!saga.getStatus().isActive()) {
-            throw new SagaExecutionException(sagaId, "Cannot cancel saga in state: " + saga.getStatus());
+            throw new SagaExecutionException(sagaId, String.format(Constant.ERROR_CANNOT_CANCEL_SAGA, saga.getStatus()));
         }
 
         // Mark as failed and start compensation
-        saga.handleFailure("Cancelled by user request", saga.getCurrentStep().name());
+        saga.handleFailure(Constant.REASON_CANCELLED_BY_USER, saga.getCurrentStep().name());
         startCompensation(saga);
 
         return saga;

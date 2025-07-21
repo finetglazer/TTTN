@@ -192,20 +192,20 @@ services:
 
 
   # Frontend Service
-  frontend-service:
-    build:
-      context: ./FE
-      dockerfile: Dockerfile
-    container_name: frontend-service
-    ports:
-      - "3000:3000"  # Frontend web interface
-    environment:
-      - REACT_APP_API_URL=http://localhost:8080  # API Gateway URL
-      - NODE_ENV=production
-    depends_on:
-      - api-gateway-service
-    networks:
-      - backend-network
+#  frontend-service:
+#    build:
+#      context: ./FE
+#      dockerfile: Dockerfile
+#    container_name: frontend-service
+#    ports:
+#      - "3000:3000"  # Frontend web interface
+#    environment:
+#      - REACT_APP_API_URL=http://localhost:8080  # API Gateway URL
+#      - NODE_ENV=production
+#    depends_on:
+#      - api-gateway-service
+#    networks:
+#      - backend-network
 
 # Define the network properly
 networks:

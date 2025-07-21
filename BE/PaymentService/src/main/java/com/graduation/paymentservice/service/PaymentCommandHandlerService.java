@@ -1,5 +1,6 @@
 package com.graduation.paymentservice.service;
 
+import com.graduation.paymentservice.constant.Constant;
 import com.graduation.paymentservice.model.PaymentTransaction;
 import com.graduation.paymentservice.model.ProcessedMessage;
 import com.graduation.paymentservice.repository.PaymentTransactionRepository;
@@ -33,43 +34,40 @@ public class PaymentCommandHandlerService {
      */
     @Transactional
     public void handleProcessPayment(Map<String, Object> command) {
-        String sagaId = (String) command.get("sagaId");
-        String messageId = (String) command.get("messageId");
+        String sagaId = (String) command.get(Constant.FIELD_SAGA_ID);
+        String messageId = (String) command.get(Constant.FIELD_MESSAGE_ID);
 
         // Check if the command has already been processed
         if (idempotencyService.isProcessed(messageId, sagaId)) {
-            log.info("Command already processed: sagaId={}, messageId={}", sagaId, messageId);
+            log.info(Constant.LOG_COMMAND_ALREADY_PROCESSED, sagaId, messageId);
             return; // Skip processing if already handled
         }
 
         // Extract the payload which contains the actual command data
-        Map<String, Object> payload = (Map<String, Object>) command.get("payload");
+        Map<String, Object> payload = (Map<String, Object>) command.get(Constant.FIELD_PAYLOAD);
         if (payload == null) {
-            log.error("Command payload is null for sagaId: {}", sagaId);
+            log.error(Constant.LOG_COMMAND_PAYLOAD_NULL, sagaId);
             publishPaymentEvent(sagaId, null, null,
-                    "PAYMENT_FAILED", false,
-                    null, "Invalid command format: missing payload");
+                    Constant.EVENT_PAYMENT_FAILED, false,
+                    null, Constant.ERROR_INVALID_COMMAND_FORMAT);
             return;
         }
 
-        String orderId = (String) payload.get("orderId");
-        String userId = (String) payload.get("userId");
-        BigDecimal amount = new BigDecimal(payload.get("totalAmount").toString());
-        String paymentMethod = (String) payload.getOrDefault("paymentMethod", "CREDIT_CARD");
+        String orderId = (String) payload.get(Constant.FIELD_ORDER_ID);
+        String userId = (String) payload.get(Constant.FIELD_USER_ID);
+        BigDecimal amount = new BigDecimal(payload.get(Constant.FIELD_TOTAL_AMOUNT).toString());
+        String paymentMethod = (String) payload.getOrDefault(Constant.FIELD_PAYMENT_METHOD, Constant.DEFAULT_PAYMENT_METHOD);
 
-        // validate above fields from the payload
-
+        // Validate above fields from the payload
         if (orderId == null || orderId.isEmpty() || userId == null || userId.isEmpty() || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            log.error("Invalid payment command data for sagaId: {}, orderId: {}, userId: {}, amount: {}",
-                    sagaId, orderId, userId, amount);
+            log.error(Constant.LOG_INVALID_PAYMENT_COMMAND_DATA, sagaId, orderId, userId, amount);
             publishPaymentEvent(sagaId, orderId, null,
-                    "PAYMENT_FAILED", false,
-                    null, "Invalid payment command data");
+                    Constant.EVENT_PAYMENT_FAILED, false,
+                    null, Constant.ERROR_INVALID_PAYMENT_DATA);
             return;
         }
 
-        log.info("Processing payment for order: {}, amount: {}, sagaId: {}",
-                orderId, amount, sagaId);
+        log.info(Constant.LOG_PROCESSING_PAYMENT_ORDER, orderId, amount, sagaId);
 
         try {
             // Create payment transaction
@@ -86,31 +84,28 @@ public class PaymentCommandHandlerService {
             if (savedTransaction.getStatus().isSuccessful()) {
                 idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.SUCCESS);
                 publishPaymentEvent(sagaId, orderId, savedTransaction.getId(),
-                        "PAYMENT_PROCESSED", true,
-                        "Payment processed successfully", null);
+                        Constant.EVENT_PAYMENT_PROCESSED, true,
+                        Constant.PAYMENT_PROCESSED_SUCCESS, null);
 
             } else {
                 idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.FAILED);
                 String reason = savedTransaction.getMockDecisionReason() != null
                         ? savedTransaction.getMockDecisionReason()
-                        : "Payment declined";
+                        : Constant.REASON_PAYMENT_DECLINED;
 
                 publishPaymentEvent(sagaId, orderId, savedTransaction.getId(),
-                        "PAYMENT_FAILED", false,
+                        Constant.EVENT_PAYMENT_FAILED, false,
                         null, reason);
-
             }
 
-
         } catch (Exception e) {
-            log.error("Error processing payment for order: {}", orderId, e);
+            log.error(Constant.LOG_ERROR_PROCESSING_PAYMENT_COMMAND, e.getMessage(), e);
             idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.FAILED);
 
             // Publish failure event
             publishPaymentEvent(sagaId, orderId, null,
-                    "PAYMENT_FAILED", false,
-                    null, "Technical error: "  + e.getMessage());
-
+                    Constant.EVENT_PAYMENT_FAILED, false,
+                    null, Constant.ERROR_TECHNICAL_PREFIX + e.getMessage());
         }
     }
 
@@ -121,31 +116,29 @@ public class PaymentCommandHandlerService {
     @Transactional
     public void handleReversePayment(Map<String, Object> command) {
         // Processed message check
-        String messageId = (String) command.get("messageId");
-        String sagaId = (String) command.get("sagaId");
-        if(idempotencyService.isProcessed(messageId, sagaId)) {
-            log.info("Reverse payment command already processed: sagaId={}, messageId={}", sagaId, messageId);
+        String messageId = (String) command.get(Constant.FIELD_MESSAGE_ID);
+        String sagaId = (String) command.get(Constant.FIELD_SAGA_ID);
+
+        if (idempotencyService.isProcessed(messageId, sagaId)) {
+            log.info(Constant.LOG_COMMAND_ALREADY_PROCESSED, sagaId, messageId);
             return; // Skip processing if already handled
         }
 
-
-
-        Map<String, Object> payload = (Map<String, Object>) command.get("payload");
-        String orderId = (String) payload.get("orderId");
-        String reason = (String) payload.get("reason");
-        String paymentTransactionId = (String) payload.get("paymentTransactionId");
+        Map<String, Object> payload = (Map<String, Object>) command.get(Constant.FIELD_PAYLOAD);
+        String orderId = (String) payload.get(Constant.FIELD_ORDER_ID);
+        String reason = (String) payload.get(Constant.FIELD_REASON);
+        String paymentTransactionId = (String) payload.get(Constant.FIELD_PAYMENT_TRANSACTION_ID);
 
         // Check if payload is valid
         if (orderId == null || orderId.isEmpty() || paymentTransactionId == null || paymentTransactionId.isEmpty() || reason == null || reason.isEmpty()) {
-            log.error("Invalid reverse payment command data for sagaId: {}, orderId: {}, paymentTransactionId: {}",
-                    sagaId, orderId, paymentTransactionId);
+            log.error(Constant.LOG_INVALID_REVERSE_PAYMENT_DATA, sagaId, orderId, paymentTransactionId);
             publishPaymentEvent(sagaId, orderId, null,
-                    "PAYMENT_REVERSE_FAILED", false,
-                    null, "Invalid reverse payment command data");
+                    Constant.EVENT_PAYMENT_REVERSE_FAILED, false,
+                    null, Constant.ERROR_INVALID_REVERSE_DATA);
             return;
         }
 
-        log.info("Reversing payment for order: {}, sagaId: {}", orderId, sagaId);
+        log.info(Constant.LOG_REVERSING_PAYMENT_ORDER, orderId, sagaId);
 
         try {
             // Simple mock - randomly succeed or fail
@@ -154,22 +147,22 @@ public class PaymentCommandHandlerService {
             if (success) {
                 idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.SUCCESS);
                 publishPaymentEvent(sagaId, orderId, null,
-                        "PAYMENT_REVERSED", true,
-                        "Payment reversed successfully", null);
+                        Constant.EVENT_PAYMENT_REVERSED, true,
+                        Constant.PAYMENT_REVERSED_SUCCESS, null);
 
             } else {
                 idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.FAILED);
                 publishPaymentEvent(sagaId, orderId, null,
-                        "PAYMENT_REVERSE_FAILED", false,
-                        null, "Payment reversal failed");
+                        Constant.EVENT_PAYMENT_REVERSE_FAILED, false,
+                        null, Constant.REASON_PAYMENT_FAILED);
             }
 
         } catch (Exception e) {
             idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.FAILED);
-            log.error("Error reversing payment for order: {}", orderId, e);
+            log.error(Constant.LOG_ERROR_PROCESSING_PAYMENT_COMMAND, e.getMessage(), e);
             publishPaymentEvent(sagaId, orderId, null,
-                    "PAYMENT_REVERSE_FAILED", false,
-                    null, "Technical error: " + e.getMessage());
+                    Constant.EVENT_PAYMENT_REVERSE_FAILED, false,
+                    null, Constant.ERROR_TECHNICAL_PREFIX + e.getMessage());
         }
     }
 
@@ -181,32 +174,31 @@ public class PaymentCommandHandlerService {
                                      String successMessage, String errorMessage) {
         try {
             Map<String, Object> event = new HashMap<>();
-            event.put("messageId", "PAY_" + System.currentTimeMillis() + "_" +
-                    UUID.randomUUID().toString().substring(0, 8));
-            event.put("sagaId", sagaId);
-            event.put("type", eventType);
-            event.put("success", success);
-            event.put("orderId", orderId);
+            event.put(Constant.FIELD_MESSAGE_ID, Constant.PREFIX_PAYMENT_MESSAGE + System.currentTimeMillis() + "_" +
+                    UUID.randomUUID().toString().substring(0, Constant.UUID_SUBSTRING_LENGTH));
+            event.put(Constant.FIELD_SAGA_ID, sagaId);
+            event.put(Constant.FIELD_TYPE, eventType);
+            event.put(Constant.FIELD_SUCCESS, success);
+            event.put(Constant.FIELD_ORDER_ID, orderId);
 
             if (paymentTransactionId != null) {
-                event.put("paymentTransactionId", paymentTransactionId);
+                event.put(Constant.FIELD_PAYMENT_TRANSACTION_ID, paymentTransactionId);
             }
 
-            event.put("timestamp", System.currentTimeMillis());
+            event.put(Constant.FIELD_TIMESTAMP, System.currentTimeMillis());
 
             if (success) {
-                event.put("message", successMessage);
+                event.put(Constant.RESPONSE_MESSAGE, successMessage);
             } else {
-                event.put("errorMessage", errorMessage);
+                event.put(Constant.FIELD_ERROR_MESSAGE, errorMessage);
             }
 
-            log.info("Publishing payment event: type={}, success={}, sagaId={}",
-                    eventType, success, sagaId);
+            log.info(Constant.LOG_PUBLISHING_PAYMENT_EVENT, eventType, success, sagaId);
 
-            kafkaTemplate.send("payment.events", sagaId, event);
+            kafkaTemplate.send(Constant.TOPIC_PAYMENT_EVENTS, sagaId, event);
 
         } catch (Exception e) {
-            log.error("Error publishing payment event: {}", e.getMessage(), e);
+            log.error(Constant.LOG_ERROR_PUBLISHING_EVENT, e.getMessage(), e);
         }
     }
 }

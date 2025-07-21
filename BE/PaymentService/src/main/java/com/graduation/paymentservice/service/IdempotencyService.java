@@ -1,7 +1,6 @@
 package com.graduation.paymentservice.service;
 
-
-
+import com.graduation.paymentservice.constant.Constant;
 import com.graduation.paymentservice.model.ProcessedMessage;
 import com.graduation.paymentservice.repository.ProcessedMessageRepository;
 import jakarta.transaction.Transactional;
@@ -13,10 +12,14 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
+/**
+ * Service for handling message idempotency
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class IdempotencyService {
+
     private final ProcessedMessageRepository processedMessageRepository;
 
     /**
@@ -28,37 +31,39 @@ public class IdempotencyService {
     public boolean isProcessed(String messageId, String sagaId) {
         // Validate messageId is provided (sagaId is only for context/logging)
         if (messageId == null || messageId.isEmpty()) {
-            throw new IllegalArgumentException("messageId is required for idempotency check");
+            throw new IllegalArgumentException(Constant.ERROR_MESSAGE_ID_REQUIRED);
         }
 
         // Check by messageId only (each command should have unique messageId)
         if (processedMessageRepository.findByMessageId(messageId).isPresent()) {
-            log.debug("Message already processed: messageId={}", messageId);
+            log.debug(Constant.LOG_MESSAGE_ALREADY_PROCESSED, messageId);
             return true;
         }
 
-        log.info("Message not processed: messageId={}, sagaId={}", messageId, sagaId);
+        log.info(Constant.LOG_MESSAGE_NOT_PROCESSED, messageId, sagaId);
         return false;
     }
 
+    /**
+     * Record that a message has been processed
+     */
     public void recordProcessing(String messageId, String sagaId, ProcessedMessage.ProcessStatus status) {
         if (messageId == null || messageId.isEmpty()) {
-            throw new IllegalArgumentException("messageId is required");
+            throw new IllegalArgumentException(Constant.ERROR_MESSAGE_ID_REQUIRED_RECORD);
         }
         if (sagaId == null || sagaId.isEmpty()) {
-            throw new IllegalArgumentException("sagaId is required");
+            throw new IllegalArgumentException(Constant.ERROR_SAGA_ID_REQUIRED);
         }
+
         try {
             ProcessedMessage processedMessage = new ProcessedMessage(messageId, sagaId, Instant.now(), status);
             processedMessageRepository.save(processedMessage);
-            log.info("Recorded processing for messageId: {}, sagaId: {}, status: {}", messageId, sagaId, status);
+            log.info(Constant.LOG_RECORDED_PROCESSING, messageId, sagaId, status);
 
         } catch (Exception ex) {
-            log.error("Failed to record processing for messageId: {}, sagaId: {}", messageId, sagaId, ex);
-            throw new RuntimeException("Failed to record processing", ex);
+            log.error(Constant.LOG_FAILED_TO_RECORD_PROCESSING, messageId, sagaId, ex);
+            throw new RuntimeException(Constant.ERROR_FAILED_TO_RECORD, ex);
         }
-
-
     }
 
     /**
@@ -68,23 +73,22 @@ public class IdempotencyService {
     @Scheduled(cron = "0 0 2 * * ?")
     @Transactional
     public void cleanupOldProcessedMessages() {
-        log.info("Cleaning up old processed messages");
+        log.info(Constant.LOG_CLEANING_OLD_MESSAGES);
 
         try {
-            Instant cutoffTime = Instant.now().minus(30, ChronoUnit.HOURS);
+            Instant cutoffTime = Instant.now().minus(Constant.CLEANUP_HOURS_THRESHOLD, ChronoUnit.HOURS);
 
             int deletedCount = processedMessageRepository.deleteByProcessedAtBefore(cutoffTime);
 
-            log.info("Deleted {} old processed messages", deletedCount);
+            log.info(Constant.LOG_DELETED_OLD_MESSAGES, deletedCount);
             if (deletedCount > 0) {
-                log.info("Old processed messages cleanup completed successfully");
+                log.info(Constant.LOG_OLD_MESSAGES_CLEANUP_SUCCESS);
             } else {
-                log.info("No old processed messages to clean up");
+                log.info(Constant.LOG_NO_OLD_MESSAGES);
             }
 
         } catch (Exception ex) {
             log.error(ex.getMessage(), ex);
         }
     }
-
 }

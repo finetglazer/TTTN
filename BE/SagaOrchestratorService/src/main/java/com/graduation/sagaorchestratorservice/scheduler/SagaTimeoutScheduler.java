@@ -1,5 +1,6 @@
 package com.graduation.sagaorchestratorservice.scheduler;
 
+import com.graduation.sagaorchestratorservice.constants.Constant;
 import com.graduation.sagaorchestratorservice.model.OrderPurchaseSagaState;
 import com.graduation.sagaorchestratorservice.service.OrderPurchaseSagaService;
 import com.graduation.sagaorchestratorservice.service.SagaMonitoringService;
@@ -48,7 +49,7 @@ public class SagaTimeoutScheduler {
     @Scheduled(fixedRate = 30000)
     public void checkForTimeouts() {
         long checkNumber = timeoutCheckCount.incrementAndGet();
-        log.debug("Running scheduled timeout check #{}", checkNumber);
+        log.debug(Constant.LOG_TIMEOUT_CHECK_RUNNING, checkNumber);
 
         try {
             Instant startTime = Instant.now();
@@ -62,16 +63,16 @@ public class SagaTimeoutScheduler {
             long duration = Duration.between(startTime, lastSuccessfulCheck).toMillis();
 
             if (timedOutCount > 0) {
-                log.warn("Timeout check #{} completed in {}ms - found {} timed-out sagas",
+                log.warn(Constant.LOG_TIMEOUT_CHECK_COMPLETED,
                         checkNumber, duration, timedOutCount);
                 timedOutSagasCount.addAndGet(timedOutCount);
             } else {
-                log.debug("Timeout check #{} completed in {}ms - no timed-out sagas found",
+                log.debug(Constant.LOG_TIMEOUT_CHECK_NO_TIMEOUTS,
                         checkNumber, duration);
             }
 
         } catch (Exception e) {
-            log.error("Error during scheduled timeout check #{}", checkNumber, e);
+            log.error(Constant.LOG_ERROR_TIMEOUT_CHECK, checkNumber, e);
         }
     }
 
@@ -86,7 +87,7 @@ public class SagaTimeoutScheduler {
             SagaMonitoringService.HealthStatus health = sagaMonitoringService.getHealthStatus();
 
             if (health.activeCount > 0) {
-                log.debug("Checking {} active sagas for timeouts", health.activeCount);
+                log.debug(Constant.LOG_CHECKING_ACTIVE_SAGAS, health.activeCount);
 
                 // Actual timeout logic implementation
                 timedOutCount = checkActualTimeouts();
@@ -111,7 +112,7 @@ public class SagaTimeoutScheduler {
             timedOutCount += checkPaymentTimeouts();
             timedOutCount += checkOrderTimeouts();
             timedOutCount += checkDefaultTimeouts();
-            
+
         } catch (Exception e) {
             log.error("Error checking for timed-out sagas", e);
             throw e;
@@ -124,8 +125,6 @@ public class SagaTimeoutScheduler {
      * Check for payment step timeouts (5 minutes)
      */
     private int checkPaymentTimeouts() {
-
-        
         try {
             return sagaService.checkForTimeoutsWithDuration(Duration.ofMinutes(paymentTimeoutMinutes));
         } catch (Exception e) {
@@ -208,20 +207,20 @@ public class SagaTimeoutScheduler {
      * Trigger compensation for a timed-out saga
      */
     private void triggerSagaCompensation(String sagaId, String reason) {
-        log.warn("Triggering compensation for saga {} due to: {}", sagaId, reason);
+        log.warn(Constant.LOG_TRIGGERING_COMPENSATION, sagaId, reason);
 
         try {
             // Find and process timeout through the saga service
             Optional<OrderPurchaseSagaState> optionalSaga = sagaService.findById(sagaId);
-            
+
             if (optionalSaga.isPresent()) {
                 OrderPurchaseSagaState saga = optionalSaga.get();
-                
+
                 // Check if saga is still in a state where it can be timed out
                 if (saga.getStatus().isActive()) {
                     // Trigger timeout handling through the saga service
                     sagaService.handleSagaTimeoutManually(sagaId, reason);
-                    log.info("Timeout compensation triggered for saga: {}", sagaId);
+                    log.info(Constant.LOG_TIMEOUT_COMPENSATION_TRIGGERED, sagaId);
                 } else {
                     log.info("Saga {} is no longer active, skipping timeout compensation", sagaId);
                 }
@@ -229,7 +228,7 @@ public class SagaTimeoutScheduler {
                 log.warn("Saga {} not found for timeout compensation", sagaId);
             }
         } catch (Exception e) {
-            log.error("Error triggering compensation for saga {}: {}", sagaId, e.getMessage());
+            log.error(Constant.LOG_ERROR_TRIGGERING_COMPENSATION, sagaId, e.getMessage());
             // Record the failure in monitoring
             sagaMonitoringService.recordSagaFailed(sagaId, reason + " - Compensation trigger failed: " + e.getMessage());
         }
@@ -240,14 +239,14 @@ public class SagaTimeoutScheduler {
      */
     @Scheduled(cron = "0 0 3 * * ?")
     public void performDailyCleanup() {
-        log.info("Starting daily saga cleanup task");
+        log.info(Constant.LOG_STARTING_DAILY_CLEANUP);
 
         try {
             // Reset metrics counters (keep daily snapshots)
             long totalTimeoutChecks = timeoutCheckCount.get();
             long totalTimedOutSagas = timedOutSagasCount.get();
 
-            log.info("Daily summary: {} timeout checks performed, {} sagas timed out",
+            log.info(Constant.LOG_DAILY_SUMMARY,
                     totalTimeoutChecks, totalTimedOutSagas);
 
             // Additional cleanup tasks can be added here:
@@ -256,7 +255,7 @@ public class SagaTimeoutScheduler {
             // - Generate reports
 
         } catch (Exception e) {
-            log.error("Error during daily cleanup", e);
+            log.error(Constant.LOG_ERROR_DAILY_CLEANUP, e);
         }
     }
 

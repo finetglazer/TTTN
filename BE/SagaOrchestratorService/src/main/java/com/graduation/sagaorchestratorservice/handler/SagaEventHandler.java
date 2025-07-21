@@ -1,5 +1,8 @@
+// ===================== SagaEventHandler.java =====================
+
 package com.graduation.sagaorchestratorservice.handler;
 
+import com.graduation.sagaorchestratorservice.constants.Constant;
 import com.graduation.sagaorchestratorservice.service.OrderPurchaseSagaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -7,10 +10,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
-/**
- * Handler for Saga-specific events
- * Processes saga coordination, monitoring, and control events
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -22,33 +21,32 @@ public class SagaEventHandler {
      * Handle saga-specific events
      */
     public void handleSagaEvent(Map<String, Object> event) {
-        String eventType = (String) event.get("type");
-        String sagaId = (String) event.get("sagaId");
+        String eventType = (String) event.get(Constant.FIELD_TYPE);
+        String sagaId = (String) event.get(Constant.FIELD_SAGA_ID);
 
-        log.debug("Processing saga event type: {} for saga: {}", eventType, sagaId);
+        log.debug(Constant.LOG_PROCESSING_SAGA_EVENT, eventType, sagaId);
 
         switch (eventType) {
-            case "SAGA_TIMEOUT_CHECK":
+            case Constant.EVENT_SAGA_TIMEOUT_CHECK:
                 handleSagaTimeoutCheck(event);
                 break;
-            case "SAGA_MONITORING_UPDATE":
+            case Constant.EVENT_SAGA_MONITORING_UPDATE:
                 handleSagaMonitoringUpdate(event);
                 break;
-            case "SAGA_EXTERNAL_CANCEL_REQUEST":
+            case Constant.EVENT_SAGA_EXTERNAL_CANCEL_REQUEST:
                 handleExternalCancelRequest(event);
                 break;
             default:
-                log.debug("Unhandled saga event type: {} for saga: {}", eventType, sagaId);
+                log.debug(Constant.LOG_UNHANDLED_SAGA_EVENT, eventType, sagaId);
                 break;
         }
     }
 
     /**
      * Handle saga timeout check events
-     * Triggered by scheduler to check for timed-out saga steps
      */
     private void handleSagaTimeoutCheck(Map<String, Object> event) {
-        String sagaId = (String) event.get("sagaId");
+        String sagaId = (String) event.get(Constant.FIELD_SAGA_ID);
         log.debug("Handling timeout check for saga: {}", sagaId);
 
         try {
@@ -62,11 +60,10 @@ public class SagaEventHandler {
 
     /**
      * Handle saga monitoring update events
-     * Used for metrics and monitoring updates
      */
     private void handleSagaMonitoringUpdate(Map<String, Object> event) {
-        String sagaId = (String) event.get("sagaId");
-        String updateType = (String) event.get("updateType");
+        String sagaId = (String) event.get(Constant.FIELD_SAGA_ID);
+        String updateType = (String) event.get(Constant.FIELD_UPDATE_TYPE);
 
         log.debug("Handling monitoring update for saga: {} type: {}", sagaId, updateType);
 
@@ -76,12 +73,11 @@ public class SagaEventHandler {
 
     /**
      * Handle external cancel request
-     * Allows external systems to request saga cancellation
      */
     private void handleExternalCancelRequest(Map<String, Object> event) {
-        String sagaId = (String) event.get("sagaId");
-        String requestedBy = (String) event.get("requestedBy");
-        String reason = (String) event.get("reason");
+        String sagaId = (String) event.get(Constant.FIELD_SAGA_ID);
+        String requestedBy = (String) event.get(Constant.FIELD_REQUESTED_BY);
+        String reason = (String) event.get(Constant.FIELD_REASON);
 
         log.info("Handling external cancel request for saga: {} by: {} reason: {}",
                 sagaId, requestedBy, reason);
@@ -100,7 +96,7 @@ public class SagaEventHandler {
      */
     public void handleDlqMessage(Object messagePayload) {
         try {
-            log.error("Received message in DLQ: {}", messagePayload);
+            log.error(Constant.LOG_RECEIVED_DLQ_MESSAGE, messagePayload);
 
             // TODO: Implement DLQ handling logic
             // 1. Parse message to understand what failed
@@ -109,7 +105,7 @@ public class SagaEventHandler {
             // 4. Alert monitoring systems
 
         } catch (Exception e) {
-            log.error("Error processing DLQ message: {}", e.getMessage(), e);
+            log.error(Constant.ERROR_PROCESSING_DLQ_MESSAGE, e.getMessage(), e);
         }
     }
 
@@ -118,12 +114,12 @@ public class SagaEventHandler {
      */
     public void handleHealthCheckMessage(Map<String, Object> message) {
         try {
-            log.debug("Received health check message: {}", message.get("timestamp"));
+            log.debug(Constant.LOG_RECEIVED_HEALTH_CHECK, message.get(Constant.FIELD_TIMESTAMP));
 
             // Simply acknowledge to confirm listener is working
 
         } catch (Exception e) {
-            log.error("Error processing health check message: {}", e.getMessage(), e);
+            log.error(Constant.ERROR_PROCESSING_HEALTH_CHECK, e.getMessage(), e);
         }
     }
 }

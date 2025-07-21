@@ -1,36 +1,45 @@
-// ProcessedMessage.java - Model/Entity
 package com.graduation.paymentservice.model;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
+import com.graduation.paymentservice.constant.Constant;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
+
+/**
+ * Entity representing processed messages for idempotency
+ */
 @Data
 @Entity
-@Table(name = "processed_messages")
+@Table(name = Constant.TABLE_PROCESSED_MESSAGES)
 @AllArgsConstructor
 @NoArgsConstructor
 public class ProcessedMessage {
 
     @Id
-    @Column(name = "message_id")
+    @Column(name = Constant.COLUMN_MESSAGE_ID)
     private String messageId;
 
-    @Column(name = "saga_id")
+    @Column(name = Constant.COLUMN_SAGA_ID)
     private String sagaId;
 
-    @Column(name = "processed_at")
+    @Column(name = Constant.COLUMN_PROCESSED_AT)
     private Instant processedAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status")
+    @Column(name = Constant.COLUMN_STATUS)
     private ProcessStatus status;
 
     // Status Enum
     public enum ProcessStatus {
         SUCCESS, FAILED, COMPENSATED
+    }
+
+    @Override
+    public String toString() {
+        return String.format(Constant.FORMAT_PROCESSED_MESSAGE_TOSTRING,
+                messageId, sagaId, status, processedAt);
     }
 }

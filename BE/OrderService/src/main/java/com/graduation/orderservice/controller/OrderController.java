@@ -1,5 +1,6 @@
 package com.graduation.orderservice.controller;
 
+import com.graduation.orderservice.constant.Constant;
 import com.graduation.orderservice.model.Order;
 import com.graduation.orderservice.payload.CreateOrderRequest;
 import com.graduation.orderservice.repository.OrderRepository;
@@ -37,7 +38,7 @@ public class OrderController {
     @PostMapping("/create")
     public ResponseEntity<Map<String, Object>> createOrder(@Valid @RequestBody CreateOrderRequest request) {
         try {
-            log.info("Creating order for user: {} with amount: {}", request.getUserId(), request.getTotalAmount());
+            log.info(Constant.LOG_CREATING_ORDER, request.getUserId(), request.getTotalAmount());
 
             Order createdOrder = orderCommandHandlerService.createOrder(
                     request.getUserId(),
@@ -48,21 +49,21 @@ public class OrderController {
             );
 
             Map<String, Object> response = Map.of(
-                    "success", true,
-                    "message", "Order created successfully",
-                    "order", createdOrder.getOrderDetails(),
-                    "sagaId", createdOrder.getSagaId() != null ? createdOrder.getSagaId() : "pending"
+                    Constant.RESPONSE_SUCCESS, true,
+                    Constant.RESPONSE_MESSAGE, Constant.ORDER_CREATED_SUCCESS,
+                    Constant.RESPONSE_ORDER, createdOrder.getOrderDetails(),
+                    Constant.RESPONSE_SAGA_ID, createdOrder.getSagaId() != null ? createdOrder.getSagaId() : Constant.SAGA_ID_PENDING
             );
 
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
         } catch (Exception e) {
-            log.error("Error creating order for user: {}", request.getUserId(), e);
+            log.error(Constant.LOG_ERROR_CREATING_ORDER, request.getUserId(), e);
 
             Map<String, Object> errorResponse = Map.of(
-                    "success", false,
-                    "message", "Failed to create order: " + e.getMessage(),
-                    "error", e.getClass().getSimpleName()
+                    Constant.RESPONSE_SUCCESS, false,
+                    Constant.RESPONSE_MESSAGE, Constant.FAILED_TO_CREATE_ORDER + e.getMessage(),
+                    Constant.RESPONSE_ERROR, e.getClass().getSimpleName()
             );
 
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
@@ -79,23 +80,23 @@ public class OrderController {
 
             if (order.isPresent()) {
                 Map<String, Object> response = Map.of(
-                        "success", true,
-                        "order", order.get().getOrderDetails()
+                        Constant.RESPONSE_SUCCESS, true,
+                        Constant.RESPONSE_ORDER, order.get().getOrderDetails()
                 );
                 return ResponseEntity.ok(response);
             } else {
                 Map<String, Object> response = Map.of(
-                        "success", false,
-                        "message", "Order not found"
+                        Constant.RESPONSE_SUCCESS, false,
+                        Constant.RESPONSE_MESSAGE, Constant.ORDER_NOT_FOUND
                 );
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
 
         } catch (Exception e) {
-            log.error("Error getting order: {}", orderId, e);
+            log.error(Constant.LOG_ERROR_GETTING_ORDER, orderId, e);
             Map<String, Object> errorResponse = Map.of(
-                    "success", false,
-                    "message", "Error retrieving order: " + e.getMessage()
+                    Constant.RESPONSE_SUCCESS, false,
+                    Constant.RESPONSE_MESSAGE, Constant.ERROR_RETRIEVING_ORDER + e.getMessage()
             );
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
@@ -114,18 +115,18 @@ public class OrderController {
                     .toList();
 
             Map<String, Object> response = Map.of(
-                    "success", true,
-                    "orders", orderDetails,
-                    "totalCount", orders.size()
+                    Constant.RESPONSE_SUCCESS, true,
+                    Constant.RESPONSE_ORDERS, orderDetails,
+                    Constant.RESPONSE_TOTAL_COUNT, orders.size()
             );
 
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            log.error("Error getting orders for user: {}", userId, e);
+            log.error(Constant.LOG_ERROR_GETTING_USER_ORDERS, userId, e);
             Map<String, Object> errorResponse = Map.of(
-                    "success", false,
-                    "message", "Error retrieving user orders: " + e.getMessage()
+                    Constant.RESPONSE_SUCCESS, false,
+                    Constant.RESPONSE_MESSAGE, Constant.ERROR_RETRIEVING_USER_ORDERS + e.getMessage()
             );
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
@@ -137,10 +138,10 @@ public class OrderController {
     @GetMapping("/test")
     public ResponseEntity<Map<String, Object>> test() {
         Map<String, Object> response = Map.of(
-                "service", "OrderService",
-                "status", "Running",
-                "message", "Order Service Test Endpoint",
-                "timestamp", java.time.LocalDateTime.now()
+                Constant.RESPONSE_SERVICE, Constant.SERVICE_NAME,
+                Constant.RESPONSE_STATUS, Constant.STATUS_RUNNING,
+                Constant.RESPONSE_MESSAGE, Constant.TEST_ENDPOINT_MESSAGE,
+                Constant.RESPONSE_TIMESTAMP, java.time.LocalDateTime.now()
         );
         return ResponseEntity.ok(response);
     }
@@ -151,12 +152,10 @@ public class OrderController {
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> health() {
         Map<String, Object> response = Map.of(
-                "service", "OrderService",
-                "status", "UP",
-                "timestamp", java.time.LocalDateTime.now()
+                Constant.RESPONSE_SERVICE, Constant.SERVICE_NAME,
+                Constant.RESPONSE_STATUS, Constant.STATUS_UP,
+                Constant.RESPONSE_TIMESTAMP, java.time.LocalDateTime.now()
         );
         return ResponseEntity.ok(response);
     }
-
-
 }

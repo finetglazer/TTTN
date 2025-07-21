@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.graduation.sagaorchestratorservice.constants.Constant;
 import com.graduation.sagaorchestratorservice.model.enums.ActionType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -21,9 +22,9 @@ import java.util.Map;
  */
 @Slf4j
 @Entity
-@Table(name = "processed_messages", indexes = {
-        @Index(name = "idx_processed_message_saga_step", columnList = "sagaId, stepId"),
-        @Index(name = "idx_processed_message_processed_at", columnList = "processedAt")
+@Table(name = Constant.TABLE_PROCESSED_MESSAGES, indexes = {
+        @Index(name = Constant.INDEX_PROCESSED_MESSAGE_SAGA_STEP, columnList = Constant.COLUMN_SAGA_ID + ", " + Constant.COLUMN_STEP_ID),
+        @Index(name = Constant.INDEX_PROCESSED_MESSAGE_PROCESSED_AT, columnList = Constant.COLUMN_PROCESSED_AT)
 })
 @Data
 @NoArgsConstructor
@@ -33,29 +34,29 @@ import java.util.Map;
 public class ProcessedMessage {
 
     @Id
-    @Column(name = "message_id", nullable = false)
+    @Column(name = Constant.COLUMN_MESSAGE_ID, nullable = false)
     private String messageId;
 
-    @Column(name = "saga_id")
+    @Column(name = Constant.COLUMN_SAGA_ID)
     private String sagaId;
 
-    @Column(name = "step_id")
+    @Column(name = Constant.COLUMN_STEP_ID)
     private Integer stepId;
 
-    @Column(name = "message_type", nullable = false)
+    @Column(name = Constant.COLUMN_MESSAGE_TYPE, nullable = false)
     private String messageType;
 
-    @Column(name = "result_json", columnDefinition = "TEXT")
+    @Column(name = Constant.COLUMN_RESULT_JSON, columnDefinition = "TEXT")
     private String resultJson;
 
-    @Column(name = "processed_at", nullable = false)
+    @Column(name = Constant.COLUMN_PROCESSED_AT, nullable = false)
     private Instant processedAt;
 
     @Transient
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "action_type")
+    @Column(name = Constant.COLUMN_ACTION_TYPE)
     private ActionType actionType;
 
     /**
@@ -84,7 +85,7 @@ public class ProcessedMessage {
         try {
             return objectMapper.readValue(resultJson, new TypeReference<Map<String, Object>>() {});
         } catch (JsonProcessingException e) {
-            log.error("Failed to parse result JSON for message {}: {}", messageId, resultJson, e);
+            log.error(Constant.ERROR_PARSE_RESULT_JSON, messageId, resultJson, e);
             return new HashMap<>();
         }
     }
@@ -101,14 +102,14 @@ public class ProcessedMessage {
      */
     private static String mapToJson(Map<String, Object> map) {
         if (map == null || map.isEmpty()) {
-            return "{}";
+            return Constant.DEFAULT_EMPTY_JSON;
         }
 
         try {
             return objectMapper.writeValueAsString(map);
         } catch (JsonProcessingException e) {
-            log.error("Failed to serialize result map to JSON: {}", map, e);
-            return "{}";
+            log.error(Constant.ERROR_SERIALIZE_RESULT_MAP, map, e);
+            return Constant.DEFAULT_EMPTY_JSON;
         }
     }
 
@@ -124,7 +125,7 @@ public class ProcessedMessage {
 
     @Override
     public String toString() {
-        return String.format("ProcessedMessage{messageId='%s', sagaId='%s', stepId=%d, messageType='%s', processedAt=%s}",
+        return String.format(Constant.FORMAT_PROCESSED_MESSAGE_TOSTRING,
                 messageId, sagaId, stepId, messageType, processedAt);
     }
 }

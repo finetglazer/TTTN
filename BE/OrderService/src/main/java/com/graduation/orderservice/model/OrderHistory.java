@@ -1,5 +1,6 @@
 package com.graduation.orderservice.model;
 
+import com.graduation.orderservice.constant.Constant;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -16,10 +17,10 @@ import java.time.LocalDateTime;
  * Entity representing the history of order status changes
  */
 @Entity
-@Table(name = "order_history", indexes = {
-        @Index(name = "idx_order_history_order_id", columnList = "orderId"),
-        @Index(name = "idx_order_history_changed_at", columnList = "changedAt"),
-        @Index(name = "idx_order_history_changed_by", columnList = "changedBy")
+@Table(name = Constant.TABLE_ORDER_HISTORY, indexes = {
+        @Index(name = Constant.INDEX_ORDER_HISTORY_ORDER_ID, columnList = Constant.COLUMN_ORDER_ID),
+        @Index(name = Constant.INDEX_ORDER_HISTORY_CHANGED_AT, columnList = Constant.COLUMN_CHANGED_AT),
+        @Index(name = Constant.INDEX_ORDER_HISTORY_CHANGED_BY, columnList = Constant.COLUMN_CHANGED_BY)
 })
 @Data
 @NoArgsConstructor
@@ -32,34 +33,34 @@ public class OrderHistory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotNull(message = "Order ID cannot be null")
-    @Column(name = "order_id", nullable = false)
+    @NotNull(message = Constant.VALIDATION_ORDER_ID_NULL)
+    @Column(name = Constant.COLUMN_ORDER_ID, nullable = false)
     private Long orderId;
 
-    @NotNull(message = "Previous status cannot be null")
+    @NotNull(message = Constant.VALIDATION_PREVIOUS_STATUS_NULL)
     @Enumerated(EnumType.STRING)
-    @Column(name = "previous_status", nullable = false)
+    @Column(name = Constant.COLUMN_PREVIOUS_STATUS, nullable = false)
     private OrderStatus previousStatus;
 
-    @NotNull(message = "New status cannot be null")
+    @NotNull(message = Constant.VALIDATION_NEW_STATUS_NULL)
     @Enumerated(EnumType.STRING)
-    @Column(name = "new_status", nullable = false)
+    @Column(name = Constant.COLUMN_NEW_STATUS, nullable = false)
     private OrderStatus newStatus;
 
-    @Column(name = "reason", length = 500)
+    @Column(name = Constant.COLUMN_REASON, length = 500)
     private String reason;
 
     @CreationTimestamp
-    @Column(name = "changed_at", nullable = false, updatable = false)
+    @Column(name = Constant.COLUMN_CHANGED_AT, nullable = false, updatable = false)
     private LocalDateTime changedAt;
 
-    @NotBlank(message = "Changed by cannot be blank")
-    @Column(name = "changed_by", nullable = false)
+    @NotBlank(message = Constant.VALIDATION_CHANGED_BY_BLANK)
+    @Column(name = Constant.COLUMN_CHANGED_BY, nullable = false)
     private String changedBy;
 
     // Many-to-one relationship with Order
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", insertable = false, updatable = false)
+    @JoinColumn(name = Constant.COLUMN_ORDER_ID, insertable = false, updatable = false)
     private Order order;
 
     /**
@@ -94,11 +95,11 @@ public class OrderHistory {
      * Get a description of the status change
      */
     public String getChangeDescription() {
-        String baseDescription = String.format("Status changed from %s to %s",
+        String baseDescription = String.format(Constant.CHANGE_DESC_FORMAT,
                 previousStatus.name(), newStatus.name());
 
         if (reason != null && !reason.trim().isEmpty()) {
-            baseDescription += " - " + reason;
+            baseDescription += String.format(Constant.CHANGE_DESC_WITH_REASON, reason);
         }
 
         return baseDescription;
@@ -131,7 +132,7 @@ public class OrderHistory {
 
     @Override
     public String toString() {
-        return String.format("OrderHistory{id=%d, orderId=%d, %s->%s, changedBy='%s', changedAt=%s}",
+        return String.format(Constant.FORMAT_ORDER_HISTORY_TOSTRING,
                 id, orderId, previousStatus, newStatus, changedBy, changedAt);
     }
 

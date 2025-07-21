@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
+import { ORDER, PLACEHOLDERS, MESSAGES, COLORS } from '@/core/config/constants';
 
 interface OrderItem {
     id: string;
@@ -21,7 +22,7 @@ export default function CreateOrderPage() {
     const [newItem, setNewItem] = useState({
         name: '',
         price: '',
-        quantity: 1
+        quantity: ORDER.DEFAULT_QUANTITY
     });
 
     const addItem = () => {
@@ -33,7 +34,7 @@ export default function CreateOrderPage() {
                 quantity: newItem.quantity
             };
             setOrderItems([...orderItems, item]);
-            setNewItem({ name: '', price: '', quantity: 1 });
+            setNewItem({ name: '', price: '', quantity: ORDER.DEFAULT_QUANTITY });
         }
     };
 
@@ -42,13 +43,13 @@ export default function CreateOrderPage() {
     };
 
     const subtotal = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const tax = subtotal * 0.1; // 10% tax
+    const tax = subtotal * ORDER.TAX_RATE;
     const total = subtotal + tax;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         // Mock order submission
-        alert('Order created successfully!');
+        alert(MESSAGES.SUCCESS.ORDER_CREATED);
     };
 
     return (
@@ -75,7 +76,7 @@ export default function CreateOrderPage() {
                                     <input
                                         type="text"
                                         className="form-input"
-                                        placeholder="Enter customer name"
+                                        placeholder={PLACEHOLDERS.CUSTOMER_NAME}
                                         value={customerInfo.name}
                                         onChange={(e) => setCustomerInfo({...customerInfo, name: e.target.value})}
                                         required
@@ -86,7 +87,7 @@ export default function CreateOrderPage() {
                                     <input
                                         type="email"
                                         className="form-input"
-                                        placeholder="customer@example.com"
+                                        placeholder={PLACEHOLDERS.EMAIL}
                                         value={customerInfo.email}
                                         onChange={(e) => setCustomerInfo({...customerInfo, email: e.target.value})}
                                         required
@@ -97,7 +98,7 @@ export default function CreateOrderPage() {
                                     <input
                                         type="tel"
                                         className="form-input"
-                                        placeholder="+1 (555) 123-4567"
+                                        placeholder={PLACEHOLDERS.PHONE}
                                         value={customerInfo.phone}
                                         onChange={(e) => setCustomerInfo({...customerInfo, phone: e.target.value})}
                                     />
@@ -107,7 +108,7 @@ export default function CreateOrderPage() {
                                     <input
                                         type="text"
                                         className="form-input"
-                                        placeholder="123 Main St, City, State"
+                                        placeholder={PLACEHOLDERS.ADDRESS}
                                         value={customerInfo.address}
                                         onChange={(e) => setCustomerInfo({...customerInfo, address: e.target.value})}
                                         required
@@ -129,7 +130,7 @@ export default function CreateOrderPage() {
                                     <input
                                         type="text"
                                         className="form-input"
-                                        placeholder="Product name"
+                                        placeholder={PLACEHOLDERS.PRODUCT_NAME}
                                         value={newItem.name}
                                         onChange={(e) => setNewItem({...newItem, name: e.target.value})}
                                     />
@@ -138,9 +139,9 @@ export default function CreateOrderPage() {
                                     <label className="form-label">Price ($)</label>
                                     <input
                                         type="number"
-                                        step="0.01"
+                                        step={ORDER.PRICE_STEP}
                                         className="form-input"
-                                        placeholder="0.00"
+                                        placeholder={PLACEHOLDERS.PRICE}
                                         value={newItem.price}
                                         onChange={(e) => setNewItem({...newItem, price: e.target.value})}
                                     />
@@ -149,7 +150,7 @@ export default function CreateOrderPage() {
                                     <label className="form-label">Quantity</label>
                                     <input
                                         type="number"
-                                        min="1"
+                                        min={ORDER.MIN_QUANTITY.toString()}
                                         className="form-input"
                                         value={newItem.quantity}
                                         onChange={(e) => setNewItem({...newItem, quantity: parseInt(e.target.value)})}

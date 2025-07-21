@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.graduation.sagaorchestratorservice.constants.Constant;
 import com.graduation.sagaorchestratorservice.model.enums.OrderPurchaseSagaStep;
 import com.graduation.sagaorchestratorservice.model.enums.SagaStatus;
 import jakarta.persistence.*;
@@ -16,9 +17,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Entity representing the state of an Order Purchase Saga
@@ -26,11 +25,11 @@ import java.util.Map;
  */
 @Slf4j
 @Entity
-@Table(name = "order_purchase_sagas", indexes = {
-        @Index(name = "idx_saga_order_id", columnList = "orderId"),
-        @Index(name = "idx_saga_user_id", columnList = "userId"),
-        @Index(name = "idx_saga_status", columnList = "status"),
-        @Index(name = "idx_saga_start_time", columnList = "startTime")
+@Table(name = Constant.TABLE_ORDER_PURCHASE_SAGAS, indexes = {
+        @Index(name = Constant.INDEX_SAGA_ORDER_ID, columnList = Constant.COLUMN_ORDER_ID),
+        @Index(name = Constant.INDEX_SAGA_USER_ID, columnList = Constant.COLUMN_USER_ID),
+        @Index(name = Constant.INDEX_SAGA_STATUS, columnList = Constant.COLUMN_STATUS),
+        @Index(name = Constant.INDEX_SAGA_START_TIME, columnList = Constant.COLUMN_START_TIME)
 })
 @Data
 @NoArgsConstructor
@@ -40,86 +39,84 @@ import java.util.Map;
 public class OrderPurchaseSagaState {
 
     @Id
-    @Column(name = "saga_id", nullable = false)
+    @Column(name = Constant.COLUMN_SAGA_ID, nullable = false)
     private String sagaId;
 
     // Business data from order
-    @Column(name = "user_id", nullable = false)
+    @Column(name = Constant.COLUMN_USER_ID, nullable = false)
     private String userId;
 
-    @Column(name = "order_id", nullable = false)
+    @Column(name = Constant.COLUMN_ORDER_ID, nullable = false)
     private Long orderId;
 
-    @Column(name = "user_email")
+    @Column(name = Constant.COLUMN_USER_EMAIL)
     private String userEmail;
 
-    @Column(name = "user_name")
+    @Column(name = Constant.COLUMN_USER_NAME)
     private String userName;
 
-    @Column(name = "order_description", length = 1000)
+    @Column(name = Constant.COLUMN_ORDER_DESCRIPTION, length = 1000)
     private String orderDescription;
 
-    @Column(name = "total_amount", nullable = false, precision = 12, scale = 2)
+    @Column(name = Constant.COLUMN_TOTAL_AMOUNT, nullable = false, precision = 12, scale = 2)
     private BigDecimal totalAmount;
 
     // Payment processing data
-    @Column(name = "payment_transaction_id")
+    @Column(name = Constant.COLUMN_PAYMENT_TRANSACTION_ID)
     private Long paymentTransactionId;
 
     // Saga execution state
     @Enumerated(EnumType.STRING)
-    @Column(name = "current_step")
+    @Column(name = Constant.COLUMN_CURRENT_STEP)
     private OrderPurchaseSagaStep currentStep;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = Constant.COLUMN_STATUS, nullable = false)
     @Builder.Default
     private SagaStatus status = SagaStatus.STARTED;
 
-    @Column(name = "completed_steps", columnDefinition = "TEXT")
+    @Column(name = Constant.COLUMN_COMPLETED_STEPS, columnDefinition = "TEXT")
     private String completedStepsJson;
 
-    @Column(name = "saga_events", columnDefinition = "TEXT")
+    @Column(name = Constant.COLUMN_SAGA_EVENTS, columnDefinition = "TEXT")
     private String sagaEventsJson;
 
-    @Column(name = "failure_reason", length = 1000)
+    @Column(name = Constant.COLUMN_FAILURE_REASON, length = 1000)
     private String failureReason;
 
     // Timing information
-    @Column(name = "start_time", nullable = false)
+    @Column(name = Constant.COLUMN_START_TIME, nullable = false)
     private Instant startTime;
 
-    @Column(name = "end_time")
+    @Column(name = Constant.COLUMN_END_TIME)
     private Instant endTime;
 
-    @Column(name = "last_updated_time", nullable = false)
+    @Column(name = Constant.COLUMN_LAST_UPDATED_TIME, nullable = false)
     private Instant lastUpdatedTime;
 
-    @Column(name = "current_step_start_time")
+    @Column(name = Constant.COLUMN_CURRENT_STEP_START_TIME)
     private Instant currentStepStartTime;
 
     // Retry information
-    @Column(name = "retry_count")
+    @Column(name = Constant.COLUMN_RETRY_COUNT)
     @Builder.Default
     private Integer retryCount = 0;
 
-    @Column(name = "max_retries")
+    @Column(name = Constant.COLUMN_MAX_RETRIES)
     @Builder.Default
-    private Integer maxRetries = 3;
+    private Integer maxRetries = Constant.DEFAULT_MAX_RETRIES;
 
-    // Add getter and increment method:
     @Getter
-    @Column(name = "compensation_retry_count")
+    @Column(name = Constant.COLUMN_COMPENSATION_RETRY_COUNT)
     private int compensationRetryCount = 0;
 
-    @Column(name = "max_compensation_retries")
-    private int maxCompensationRetries = 3;
+    @Column(name = Constant.COLUMN_MAX_COMPENSATION_RETRIES)
+    private int maxCompensationRetries = Constant.DEFAULT_MAX_COMPENSATION_RETRIES;
 
     public void incrementCompensationRetryCount() {
         this.compensationRetryCount++;
         this.lastUpdatedTime = Instant.now();
     }
-
 
     @Transient
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -130,14 +127,12 @@ public class OrderPurchaseSagaState {
     @Transient
     private List<SagaEvent> sagaEvents;
 
-
-
     /**
      * Factory method to initiate a new order purchase saga
      */
     public static OrderPurchaseSagaState initiate(String sagaId, String userId, Long orderId,
-                                             String userEmail, String userName,
-                                             String orderDescription, BigDecimal totalAmount) {
+                                                  String userEmail, String userName,
+                                                  String orderDescription, BigDecimal totalAmount) {
         OrderPurchaseSagaState saga = OrderPurchaseSagaState.builder()
                 .sagaId(sagaId)
                 .userId(userId)
@@ -152,12 +147,12 @@ public class OrderPurchaseSagaState {
                 .lastUpdatedTime(Instant.now())
                 .currentStepStartTime(Instant.now())
                 .retryCount(0)
-                .maxRetries(3)
+                .maxRetries(Constant.DEFAULT_MAX_RETRIES)
                 .build();
 
         saga.initializeCollections();
-        saga.addEvent(SagaEvent.of("SAGA_INITIATED",
-                "Order purchase saga initiated for order: " + orderId));
+        saga.addEvent(SagaEvent.of(Constant.SAGA_EVENT_INITIATED,
+                Constant.DESC_SAGA_INITIATED + orderId));
 
         return saga;
     }
@@ -178,8 +173,6 @@ public class OrderPurchaseSagaState {
         currentStepStartTime = Instant.now();
 
         if (nextStep == OrderPurchaseSagaStep.COMPLETE_SAGA) {
-
-
             log.info("Saga [{}] completed successfully", sagaId);
             status = SagaStatus.COMPLETED;
             endTime = Instant.now();
@@ -220,8 +213,8 @@ public class OrderPurchaseSagaState {
         currentStepStartTime = Instant.now();
         lastUpdatedTime = Instant.now();
 
-        addEvent(SagaEvent.of("COMPENSATION_STEP",
-                "Starting compensation with step: " + currentStep.getDescription()));
+        addEvent(SagaEvent.of(Constant.SAGA_EVENT_COMPENSATION_STEP,
+                Constant.DESC_COMPENSATION_STEP + currentStep.getDescription()));
     }
 
     /**
@@ -280,7 +273,7 @@ public class OrderPurchaseSagaState {
                 try {
                     completedSteps = objectMapper.readValue(completedStepsJson, new TypeReference<List<String>>() {});
                 } catch (JsonProcessingException e) {
-                    log.error("Failed to parse completed steps JSON for saga {}: {}", sagaId, completedStepsJson, e);
+                    log.error(Constant.ERROR_PARSE_COMPLETED_STEPS, sagaId, completedStepsJson, e);
                     completedSteps = new ArrayList<>();
                 }
             } else {
@@ -299,7 +292,7 @@ public class OrderPurchaseSagaState {
                 try {
                     sagaEvents = objectMapper.readValue(sagaEventsJson, new TypeReference<List<SagaEvent>>() {});
                 } catch (JsonProcessingException e) {
-                    log.error("Failed to parse saga events JSON for saga {}: {}", sagaId, sagaEventsJson, e);
+                    log.error(Constant.ERROR_PARSE_SAGA_EVENTS, sagaId, sagaEventsJson, e);
                     sagaEvents = new ArrayList<>();
                 }
             } else {
@@ -335,8 +328,8 @@ public class OrderPurchaseSagaState {
             try {
                 completedStepsJson = objectMapper.writeValueAsString(completedSteps);
             } catch (JsonProcessingException e) {
-                log.error("Failed to serialize completed steps for saga {}", sagaId, e);
-                completedStepsJson = "[]";
+                log.error(Constant.ERROR_SERIALIZE_COMPLETED_STEPS, sagaId, e);
+                completedStepsJson = Constant.DEFAULT_EMPTY_ARRAY;
             }
         }
 
@@ -344,8 +337,8 @@ public class OrderPurchaseSagaState {
             try {
                 sagaEventsJson = objectMapper.writeValueAsString(sagaEvents);
             } catch (JsonProcessingException e) {
-                log.error("Failed to serialize saga events for saga {}", sagaId, e);
-                sagaEventsJson = "[]";
+                log.error(Constant.ERROR_SERIALIZE_SAGA_EVENTS, sagaId, e);
+                sagaEventsJson = Constant.DEFAULT_EMPTY_ARRAY;
             }
         }
 
@@ -366,7 +359,7 @@ public class OrderPurchaseSagaState {
 
     @Override
     public String toString() {
-        return String.format("OrderPurchaseSaga{sagaId='%s', orderId=%d, userId='%s', status=%s, currentStep=%s}",
+        return String.format(Constant.FORMAT_SAGA_TOSTRING,
                 sagaId, orderId, userId, status, currentStep);
     }
 }

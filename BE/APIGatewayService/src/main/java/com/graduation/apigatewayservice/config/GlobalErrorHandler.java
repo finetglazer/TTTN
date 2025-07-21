@@ -1,5 +1,6 @@
 package com.graduation.apigatewayservice.config;
 
+import com.graduation.apigatewayservice.constants.Constant;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
 import org.springframework.core.annotation.Order;
@@ -14,6 +15,7 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Objects;
 import java.util.concurrent.TimeoutException;
 
 @Slf4j
@@ -26,9 +28,11 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
 
         ErrorResponse errorResponse = createErrorResponse(ex, exchange);
 
-        log.error("Gateway error occurred: {} for path: {}",
+        // Log error but exclude sensitive information from hashcode
+        log.error("Gateway error occurred: {} for path: {} | ErrorResponse hashcode: {}",
                 ex.getMessage(),
                 exchange.getRequest().getPath().value(),
+                errorResponse.getSafeHashCode(),
                 ex
         );
 
@@ -46,7 +50,7 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
             return new ErrorResponse(
                     HttpStatus.GATEWAY_TIMEOUT,
                     "Gateway Timeout",
-                    "The service took too long to respond. Please try again later."
+                    Constant.msg.get("TIMEOUT_ERROR")
             );
         }
 
@@ -54,7 +58,7 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
             return new ErrorResponse(
                     (HttpStatus) rse.getStatusCode(),
                     "Service Error",
-                    rse.getReason() != null ? rse.getReason() : "An error occurred while processing your request."
+                    rse.getReason() != null ? rse.getReason() : Constant.msg.get("GENERIC_ERROR")
             );
         }
 
@@ -70,7 +74,7 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
         return new ErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Internal Server Error",
-                "An unexpected error occurred. Please try again later."
+                Constant.msg.get("GENERIC_ERROR")
         );
     }
 
@@ -116,6 +120,40 @@ public class GlobalErrorHandler implements ErrorWebExceptionHandler {
 
         public String getMessage() {
             return message;
+        }
+
+        /**
+         * Generate hashcode excluding sensitive fields
+         */
+        @Override
+        public int hashCode() {
+            // Only include status and error in hashcode, exclude message which might contain sensitive data
+            return Objects.hash(status, error);
+        }
+
+        /**
+         * Safe hashcode for logging that excludes sensitive information
+         */
+        public int getSafeHashCode() {
+            // For logging purposes, use only non-sensitive fields
+            return Objects.hash(status != null ? status.value() : null, error);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null || getClass() != obj.getClass()) return false;
+            ErrorResponse that = (ErrorResponse) obj;
+            return Objects.equals(status, that.status) &&
+                    Objects.equals(error, that.error);
+            // Intentionally exclude message from equals as it might contain sensitive data
+        }
+
+        @Override
+        public String toString() {
+            // Safe toString that doesn't expose potentially sensitive message content
+            return String.format("ErrorResponse{status=%s, error='%s'}",
+                    status, error);
         }
     }
 }

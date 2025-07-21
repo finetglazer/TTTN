@@ -1,5 +1,6 @@
 package com.graduation.sagaorchestratorservice.service;
 
+import com.graduation.sagaorchestratorservice.constants.Constant;
 import com.graduation.sagaorchestratorservice.model.ProcessedMessage;
 import com.graduation.sagaorchestratorservice.model.enums.ActionType;
 import com.graduation.sagaorchestratorservice.repository.ProcessedMessageRepository;
@@ -37,11 +38,11 @@ public class IdempotencyService {
         if (messageId != null && !messageId.trim().isEmpty()) {
             Optional<ProcessedMessage> processed = processedMessageRepository.findByMessageId(messageId);
             if (processed.isPresent()) {
-                log.debug("Message already processed: messageId={}", messageId);
+                log.debug(Constant.LOG_MESSAGE_ALREADY_PROCESSED, messageId);
                 return true;
             }
         } else {
-            throw new IllegalArgumentException("messageId is required");
+            throw new IllegalArgumentException(Constant.VALIDATION_MESSAGE_ID_REQUIRED);
         }
 
         // Secondary check: by sagaId + stepId + actionType combination
@@ -49,15 +50,15 @@ public class IdempotencyService {
             Optional<ProcessedMessage> processed = processedMessageRepository
                     .findBySagaIdAndStepIdAndActionType(sagaId, stepId, actionType);
             if (processed.isPresent()) {
-                log.debug("Message already processed: sagaId={}, stepId={}, actionType={}",
+                log.debug(Constant.LOG_MESSAGE_ALREADY_PROCESSED_SAGA_STEP,
                         sagaId, stepId, actionType);
                 return true;
             }
         } else {
-            throw  new IllegalArgumentException("sagaId and stepId is required");
+            throw new IllegalArgumentException(Constant.VALIDATION_SAGA_ID_REQUIRED + " and " + Constant.VALIDATION_STEP_ID_REQUIRED);
         }
 
-        log.debug("Message not processed before: messageId={}, sagaId={}, stepId={}, actionType={}",
+        log.debug(Constant.LOG_MESSAGE_NOT_PROCESSED,
                 messageId, sagaId, stepId, actionType);
         return false;
     }
@@ -74,11 +75,11 @@ public class IdempotencyService {
         if (finalMessageId == null || finalMessageId.trim().isEmpty()) {
             if (sagaId != null && stepId != null) {
                 finalMessageId = MessageIdGenerator.generateForSagaStep(sagaId, stepId);
-                log.debug("Generated messageId {} for sagaId {} and stepId {}",
+                log.debug(Constant.LOG_GENERATED_MESSAGE_ID,
                         finalMessageId, sagaId, stepId);
             } else {
                 finalMessageId = MessageIdGenerator.generate();
-                log.warn("Generated random messageId {} for message with insufficient context",
+                log.warn(Constant.LOG_GENERATED_RANDOM_MESSAGE_ID,
                         finalMessageId);
             }
         }
@@ -93,11 +94,11 @@ public class IdempotencyService {
             );
 
             processedMessageRepository.save(processedMessage);
-            log.debug("Successfully recorded message processing: messageId={}, sagaId={}, stepId={}",
+            log.debug(Constant.LOG_RECORDED_MESSAGE_PROCESSING,
                     finalMessageId, sagaId, stepId);
 
         } catch (Exception e) {
-            log.error("Failed to record message processing: messageId={}, sagaId={}, stepId={}",
+            log.error(Constant.LOG_FAILED_RECORD_MESSAGE_PROCESSING,
                     finalMessageId, sagaId, stepId, e);
             throw e; // Re-throw to ensure transaction rollback
         }
@@ -120,12 +121,12 @@ public class IdempotencyService {
         }
 
         if (processedMessage != null) {
-            log.debug("Found processed result for messageId={}, sagaId={}, stepId={}",
+            log.debug(Constant.LOG_FOUND_PROCESSED_RESULT,
                     messageId, sagaId, stepId);
             return Optional.of(processedMessage.getResult());
         }
 
-        log.debug("No processed result found for messageId={}, sagaId={}, stepId={}",
+        log.debug(Constant.LOG_NO_PROCESSED_RESULT,
                 messageId, sagaId, stepId);
         return Optional.empty();
     }
@@ -191,10 +192,10 @@ public class IdempotencyService {
             java.util.List<ProcessedMessage> messages = processedMessageRepository.findBySagaId(sagaId);
             if (!messages.isEmpty()) {
                 processedMessageRepository.deleteAll(messages);
-                log.info("Cleaned up {} processed messages for saga {}", messages.size(), sagaId);
+                log.info(Constant.LOG_CLEANED_SAGA_MESSAGES, messages.size(), sagaId);
             }
         } catch (Exception e) {
-            log.error("Failed to cleanup processed messages for saga {}", sagaId, e);
+            log.error(Constant.LOG_FAILED_CLEANUP_SAGA_MESSAGES, sagaId, e);
         }
     }
 
@@ -205,7 +206,7 @@ public class IdempotencyService {
     @Scheduled(cron = "0 0 2 * * ?")
     @Transactional
     public void cleanupOldMessages() {
-        log.info("Starting cleanup of old processed messages");
+        log.info(Constant.LOG_STARTING_CLEANUP_OLD_MESSAGES);
 
         try {
             // Keep messages for 30 days (configurable)
@@ -214,13 +215,13 @@ public class IdempotencyService {
             int deletedCount = processedMessageRepository.deleteByProcessedAtBefore(cutoffTime);
 
             if (deletedCount > 0) {
-                log.info("Completed cleanup: deleted {} old processed messages", deletedCount);
+                log.info(Constant.LOG_COMPLETED_CLEANUP, deletedCount);
             } else {
-                log.debug("No old processed messages to cleanup");
+                log.debug(Constant.LOG_NO_OLD_MESSAGES_CLEANUP);
             }
 
         } catch (Exception e) {
-            log.error("Failed to cleanup old processed messages", e);
+            log.error(Constant.LOG_FAILED_CLEANUP_OLD_MESSAGES, e);
         }
     }
 
@@ -233,12 +234,12 @@ public class IdempotencyService {
             Instant cutoffTime = Instant.now().minus(days, ChronoUnit.DAYS);
             int deletedCount = processedMessageRepository.deleteByProcessedAtBefore(cutoffTime);
 
-            log.info("Manual cleanup: deleted {} processed messages older than {} days",
+            log.info(Constant.LOG_MANUAL_CLEANUP,
                     deletedCount, days);
             return deletedCount;
 
         } catch (Exception e) {
-            log.error("Failed to manually cleanup processed messages", e);
+            log.error(Constant.LOG_FAILED_MANUAL_CLEANUP, e);
             return 0;
         }
     }

@@ -8,5 +8,5 @@ docker-compose up --build --force-recreate --remove-orphans -d
 
 # needs to be updated, you can specify the service name.
 ```bash
-docker-compose up --build --force-recreate --remove-orphans -d frontend-service
+docker-compose up --build --force-recreate --remove-orphans -d api-gateway-service order-service payment-service saga-orchestrator-service
 ```

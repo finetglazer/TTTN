@@ -2,23 +2,20 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { COLORS, NAVIGATION } from '@/core/config/constants';
 
 export default function Header() {
     const pathname = usePathname();
 
-    const navItems = [
-        { href: '/', label: 'Home' },
-        { href: '/dashboard', label: 'Orders' },
-        { href: '/create-order', label: 'Create Order' },
-    ];
+    const navItems = NAVIGATION;
 
     return (
-        <header className="bg-[#1a1a1a] text-white shadow-lg">
+        <header className="text-white shadow-lg" style={{backgroundColor: COLORS.DEEP_CHARCOAL}}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
                     {/* Logo */}
                     <Link href="/" className="flex items-center space-x-2">
-                        <div className="text-2xl font-bold text-[#f6d55c]">
+                        <div className="text-2xl font-bold" style={{color: COLORS.PRIMARY_GOLD}}>
                             Order Portal
                         </div>
                     </Link>
@@ -29,11 +26,13 @@ export default function Header() {
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                className={`px-3 py-2 text-sm font-medium transition-colors duration-200 ${
-                                    pathname === item.href
-                                        ? 'text-[#f6d55c] border-b-2 border-[#f6d55c]'
-                                        : 'text-gray-300 hover:text-[#f6d55c]'
-                                }`}
+                                className="px-3 py-2 text-sm font-medium transition-colors duration-200"
+                                style={{
+                                    color: pathname === item.href ? COLORS.PRIMARY_GOLD : '#d1d5db',
+                                    borderBottom: pathname === item.href ? `2px solid ${COLORS.PRIMARY_GOLD}` : 'none'
+                                }}
+                                onMouseEnter={(e) => e.target.style.color = COLORS.PRIMARY_GOLD}
+                                onMouseLeave={(e) => e.target.style.color = pathname === item.href ? COLORS.PRIMARY_GOLD : '#d1d5db'}
                             >
                                 {item.label}
                             </Link>
@@ -44,7 +43,10 @@ export default function Header() {
                     <div className="md:hidden">
                         <button
                             type="button"
-                            className="text-gray-300 hover:text-[#f6d55c] focus:outline-none"
+                            className="text-gray-300 focus:outline-none"
+                            style={{color: '#d1d5db'}}
+                            onMouseEnter={(e) => e.target.style.color = COLORS.PRIMARY_GOLD}
+                            onMouseLeave={(e) => e.target.style.color = '#d1d5db'}
                         >
                             <svg
                                 className="h-6 w-6"
@@ -63,7 +65,7 @@ export default function Header() {
             </div>
 
             {/* Golden accent line */}
-            <div className="h-0.5 bg-[#f6d55c]"></div>
+            <div className="h-0.5" style={{backgroundColor: COLORS.PRIMARY_GOLD}}></div>
         </header>
     );
 }

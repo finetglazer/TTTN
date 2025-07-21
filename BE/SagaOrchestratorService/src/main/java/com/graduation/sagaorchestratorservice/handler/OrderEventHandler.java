@@ -1,5 +1,8 @@
+// ===================== OrderEventHandler.java =====================
+
 package com.graduation.sagaorchestratorservice.handler;
 
+import com.graduation.sagaorchestratorservice.constants.Constant;
 import com.graduation.sagaorchestratorservice.service.OrderPurchaseSagaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -7,10 +10,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
-/**
- * Handler for Order Service events
- * Processes order-related events and coordinates with saga service
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -22,34 +21,16 @@ public class OrderEventHandler {
      * Handle order events from Order Service
      */
     public void handleOrderEvent(Map<String, Object> event) {
-        String eventType = (String) event.get("type");
-        String sagaId = (String) event.get("sagaId");
+        String eventType = (String) event.get(Constant.FIELD_TYPE);
+        String sagaId = (String) event.get(Constant.FIELD_SAGA_ID);
 
-        log.debug("Processing order event type: {} for saga: {}", eventType, sagaId);
+        log.debug(Constant.LOG_PROCESSING_ORDER_EVENT, eventType, sagaId);
 
-//        switch (eventType) {
-//            case "ORDER_CREATED":
-//                handleOrderCreatedEvent(event);
-//                break;
-//            case "ORDER_STATUS_UPDATED_CONFIRMED":
-//            case "ORDER_STATUS_UPDATE_FAILED":
-//
-//            case "ORDER_STATUS_UPDATED_DELIVERED":
-//            case "ORDER_CANCELLED":
-//            case "ORDER_CANCELLATION_FAILED":
-//                orderPurchaseSagaService.handleEventMessage(event);
-//                break;
-//            default:
-//                log.debug("Unhandled order event type: {}", eventType);
-//                break;
-//        }
-
-        if (eventType.equals("ORDER_CREATED")) {
+        if (eventType.equals(Constant.EVENT_ORDER_CREATED)) {
             handleOrderCreatedEvent(event);
         } else {
             orderPurchaseSagaService.handleEventMessage(event);
         }
-
     }
 
     /**
@@ -57,23 +38,23 @@ public class OrderEventHandler {
      */
     private void handleOrderCreatedEvent(Map<String, Object> event) {
         try {
-            Long orderId = Long.valueOf(event.get("orderId").toString());
-            String userId = (String) event.get("userId");
-            String userEmail = (String) event.get("userEmail");
-            String userName = (String) event.get("userName");
-            String orderDescription = (String) event.get("orderDescription");
-            java.math.BigDecimal totalAmount = new java.math.BigDecimal(event.get("totalAmount").toString());
+            Long orderId = Long.valueOf(event.get(Constant.FIELD_ORDER_ID).toString());
+            String userId = (String) event.get(Constant.FIELD_USER_ID);
+            String userEmail = (String) event.get(Constant.FIELD_USER_EMAIL);
+            String userName = (String) event.get(Constant.FIELD_USER_NAME);
+            String orderDescription = (String) event.get(Constant.FIELD_ORDER_DESCRIPTION);
+            java.math.BigDecimal totalAmount = new java.math.BigDecimal(event.get(Constant.FIELD_TOTAL_AMOUNT).toString());
 
-            log.info("Starting saga for order created event: orderId={}, userId={}, amount={}",
+            log.info(Constant.LOG_STARTING_SAGA_FOR_ORDER,
                     orderId, userId, totalAmount);
 
             orderPurchaseSagaService.startSaga(userId, orderId, userEmail, userName, orderDescription, totalAmount);
 
-            log.info("Successfully started saga for order: {}", orderId);
+            log.info(Constant.LOG_SAGA_STARTED_SUCCESS, orderId);
 
         } catch (Exception e) {
-            log.error("Error handling ORDER_CREATED event: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to start saga for ORDER_CREATED event", e);
+            log.error(Constant.ERROR_HANDLING_ORDER_CREATED, e);
+            throw new RuntimeException(Constant.ERROR_FAILED_TO_START_SAGA, e);
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.graduation.sagaorchestratorservice.config;
 
+import com.graduation.sagaorchestratorservice.constants.Constant;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -209,7 +210,9 @@ public class KafkaConfig {
         return factory;
     }
 
-    // Payment Events specific container factory
+    /**
+     * Payment Events specific container factory
+     */
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, Object> paymentEventKafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, Object> factory =
@@ -234,11 +237,11 @@ public class KafkaConfig {
 
     // Helper methods for specific consumer factories
     private ConsumerFactory<String, Object> createOrderEventConsumerFactory() {
-        return createEventConsumerFactory(groupId + "-order-events");
+        return createEventConsumerFactory(groupId + Constant.GROUP_SUFFIX_ORDER_EVENTS);
     }
 
     private ConsumerFactory<String, Object> createPaymentEventConsumerFactory() {
-        return createEventConsumerFactory(groupId + "-payment-events");
+        return createEventConsumerFactory(groupId + Constant.GROUP_SUFFIX_PAYMENT_EVENTS);
     }
 
     private ConsumerFactory<String, Object> createEventConsumerFactory(String groupId) {
@@ -262,13 +265,15 @@ public class KafkaConfig {
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
-    // Generic error handler bean
+    /**
+     * Generic error handler bean
+     */
     @Bean
     public DefaultErrorHandler kafkaErrorHandler() {
         DefaultErrorHandler handler = new DefaultErrorHandler(
                 (record, exception) -> {
                     org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(KafkaConfig.class);
-                    log.error("Error processing record: {}", exception.getMessage());
+                    log.error(Constant.ERROR_PROCESSING_RECORD, exception.getMessage());
                     exception.printStackTrace();
                 },
                 new ExponentialBackOff(1000, 2)
