@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { COLORS, CONTACT, ROUTES } from '@/core/config/constants';
 
@@ -21,31 +23,31 @@ export default function Footer() {
                         <h4 className="text-lg font-semibold text-white">Quick Links</h4>
                         <ul className="space-y-2">
                             <li>
-                                <Link 
-                                    href="/dashboard" 
-                                    className="text-gray-400 transition-colors duration-200"
-                                    onMouseEnter={(e) => e.target.style.color = COLORS.PRIMARY_GOLD}
-                                    onMouseLeave={(e) => e.target.style.color = '#9ca3af'}
-                                >
-                                    Dashboard
-                                </Link>
+                                {/*<Link*/}
+                                {/*    href="/dashboard"*/}
+                                {/*    className="text-gray-400 transition-colors duration-200"*/}
+                                {/*    onMouseEnter={(e) => e.currentTarget.style.color = COLORS.PRIMARY_GOLD}*/}
+                                {/*    onMouseLeave={(e) => e.currentTarget.style.color = '#9ca3af'}*/}
+                                {/*>*/}
+                                {/*    Dashboard*/}
+                                {/*</Link>*/}
                             </li>
                             <li>
-                                <Link 
-                                    href="/create-order" 
+                                <Link
+                                    href="/create-order"
                                     className="text-gray-400 transition-colors duration-200"
-                                    onMouseEnter={(e) => e.target.style.color = COLORS.PRIMARY_GOLD}
-                                    onMouseLeave={(e) => e.target.style.color = '#9ca3af'}
+                                    onMouseEnter={(e) => e.currentTarget.style.color = COLORS.PRIMARY_GOLD}
+                                    onMouseLeave={(e) => e.currentTarget.style.color = '#9ca3af'}
                                 >
                                     Create Order
                                 </Link>
                             </li>
                             <li>
-                                <Link 
-                                    href="/orders" 
+                                <Link
+                                    href="/orders"
                                     className="text-gray-400 transition-colors duration-200"
-                                    onMouseEnter={(e) => e.target.style.color = COLORS.PRIMARY_GOLD}
-                                    onMouseLeave={(e) => e.target.style.color = '#9ca3af'}
+                                    onMouseEnter={(e) => e.currentTarget.style.color = COLORS.PRIMARY_GOLD}
+                                    onMouseLeave={(e) => e.currentTarget.style.color = '#9ca3af'}
                                 >
                                     All Orders
                                 </Link>
@@ -93,27 +95,27 @@ export default function Footer() {
                             &copy; {new Date().getFullYear()} OrderPortal. All rights reserved.
                         </p>
                         <div className="flex items-center space-x-6 mt-4 md:mt-0">
-                            <a 
-                                href="#" 
+                            <a
+                                href="#"
                                 className="text-gray-400 text-sm transition-colors duration-200"
-                                onMouseEnter={(e) => e.target.style.color = COLORS.PRIMARY_GOLD}
-                                onMouseLeave={(e) => e.target.style.color = '#9ca3af'}
+                                onMouseEnter={(e) => e.currentTarget.style.color = COLORS.PRIMARY_GOLD}
+                                onMouseLeave={(e) => e.currentTarget.style.color = '#9ca3af'}
                             >
                                 Privacy Policy
                             </a>
-                            <a 
-                                href="#" 
+                            <a
+                                href="#"
                                 className="text-gray-400 text-sm transition-colors duration-200"
-                                onMouseEnter={(e) => e.target.style.color = COLORS.PRIMARY_GOLD}
-                                onMouseLeave={(e) => e.target.style.color = '#9ca3af'}
+                                onMouseEnter={(e) => e.currentTarget.style.color = COLORS.PRIMARY_GOLD}
+                                onMouseLeave={(e) => e.currentTarget.style.color = '#9ca3af'}
                             >
                                 Terms of Service
                             </a>
-                            <a 
-                                href="#" 
+                            <a
+                                href="#"
                                 className="text-gray-400 text-sm transition-colors duration-200"
-                                onMouseEnter={(e) => e.target.style.color = COLORS.PRIMARY_GOLD}
-                                onMouseLeave={(e) => e.target.style.color = '#9ca3af'}
+                                onMouseEnter={(e) => e.currentTarget.style.color = COLORS.PRIMARY_GOLD}
+                                onMouseLeave={(e) => e.currentTarget.style.color = '#9ca3af'}
                             >
                                 Cookie Policy
                             </a>

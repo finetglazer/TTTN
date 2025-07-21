@@ -192,9 +192,9 @@ export default function DashboardPage() {
                                         ${order.amount.toFixed(2)}
                                     </td>
                                     <td className="px-6 py-4">
-                      <span className={getStatusBadgeClass(order.status)}>
-                        {order.status}
-                      </span>
+                                      <span className={getStatusBadgeClass(order.status)}>
+                                        {order.status}
+                                      </span>
                                     </td>
                                     <td className="px-6 py-4 text-[#718096]">
                                         {new Date(order.createdAt).toLocaleDateString()}
@@ -205,8 +205,8 @@ export default function DashboardPage() {
                                                 href={`/order/${order.id}`}
                                                 className="font-medium"
                                                 style={{color: COLORS.PRIMARY_GOLD}}
-                                                onMouseEnter={(e) => e.target.style.color = COLORS.GOLD_HOVER}
-                                                onMouseLeave={(e) => e.target.style.color = COLORS.PRIMARY_GOLD}
+                                                onMouseEnter={(e) => e.currentTarget.style.color = COLORS.GOLD_HOVER}
+                                                onMouseLeave={(e) => e.currentTarget.style.color = COLORS.PRIMARY_GOLD}
                                             >
                                                 View Details
                                             </Link>
@@ -241,14 +241,12 @@ export default function DashboardPage() {
                                     className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                                         currentPage === page
                                             ? `text-black`
-                                        : 'text-[#718096] hover:bg-gray-100'
+                                            : 'text-[#718096] hover:bg-gray-100'
                                     }`}
                                     style={{
                                         backgroundColor: currentPage === page ? COLORS.PRIMARY_GOLD : undefined,
                                         color: currentPage === page ? COLORS.DEEP_CHARCOAL : undefined
                                     }}
-                                            : 'text-[#718096] hover:bg-gray-100'
-                                    }`}
                                 >
                                     {page}
                                 </button>

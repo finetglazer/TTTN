@@ -31,8 +31,8 @@ export default function Header() {
                                     color: pathname === item.href ? COLORS.PRIMARY_GOLD : '#d1d5db',
                                     borderBottom: pathname === item.href ? `2px solid ${COLORS.PRIMARY_GOLD}` : 'none'
                                 }}
-                                onMouseEnter={(e) => e.target.style.color = COLORS.PRIMARY_GOLD}
-                                onMouseLeave={(e) => e.target.style.color = pathname === item.href ? COLORS.PRIMARY_GOLD : '#d1d5db'}
+                                onMouseEnter={(e) => e.currentTarget.style.color = COLORS.PRIMARY_GOLD}
+                                onMouseLeave={(e) => e.currentTarget.style.color = pathname === item.href ? COLORS.PRIMARY_GOLD : '#d1d5db'}
                             >
                                 {item.label}
                             </Link>
@@ -45,8 +45,8 @@ export default function Header() {
                             type="button"
                             className="text-gray-300 focus:outline-none"
                             style={{color: '#d1d5db'}}
-                            onMouseEnter={(e) => e.target.style.color = COLORS.PRIMARY_GOLD}
-                            onMouseLeave={(e) => e.target.style.color = '#d1d5db'}
+                            onMouseEnter={(e) => e.currentTarget.style.color = COLORS.PRIMARY_GOLD}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#d1d5db'}
                         >
                             <svg
                                 className="h-6 w-6"

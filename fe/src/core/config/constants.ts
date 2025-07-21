@@ -58,7 +58,7 @@ export const ROUTES = {
 // Navigation Items
 export const NAVIGATION = [
   { href: '/', label: 'Home' },
-  { href: '/dashboard', label: 'Orders' },
+  { href: '/orders', label: 'Orders' },
   { href: '/create-order', label: 'Create Order' },
 ];
 
