@@ -17,8 +17,8 @@ export default function WelcomePage() {
         setIsTransitioning(true);
         // Wait for animation to complete before navigation
         setTimeout(() => {
-            router.push('/dashboard');
-        }, 800);
+            router.push('/orders');
+        }, 700);
     };
 
     return (
