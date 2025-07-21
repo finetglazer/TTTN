@@ -11,6 +11,12 @@ interface OrderItem {
     quantity: number;
 }
 
+interface NewItem {
+    name: string;
+    price: string;
+    quantity: number;
+}
+
 export default function CreateOrderPage() {
     const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
     const [customerInfo, setCustomerInfo] = useState({
@@ -19,7 +25,7 @@ export default function CreateOrderPage() {
         phone: '',
         address: ''
     });
-    const [newItem, setNewItem] = useState({
+    const [newItem, setNewItem] = useState<NewItem>({
         name: '',
         price: '',
         quantity: ORDER.DEFAULT_QUANTITY
