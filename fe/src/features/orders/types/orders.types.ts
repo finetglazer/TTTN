@@ -7,6 +7,7 @@ export interface Order {
     userName: string;
     orderDescription: string;
     totalAmount: number;
+    shippingAddress: string;
     status: keyof typeof ORDER.STATUS;
     createdAt: string;
     updatedAt: string;
@@ -14,8 +15,10 @@ export interface Order {
 }
 
 export interface CreateOrderRequest {
+    userId: String;
     userEmail: string;
     userName: string;
     orderDescription: string;
     totalAmount: number;
+    shippingAddress: string;
 }

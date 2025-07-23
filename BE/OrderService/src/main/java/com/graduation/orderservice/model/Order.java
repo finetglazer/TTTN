@@ -78,6 +78,9 @@ public class Order {
     @Column(name = Constant.COLUMN_SAGA_ID)
     private String sagaId;
 
+    @Column(name = Constant.COLUMN_SHIPPING_ADDRESS)
+    private String shippingAddress;
+
     // Relationship with OrderHistory
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
@@ -87,7 +90,7 @@ public class Order {
      * Business method to create a new order
      */
     public static Order createOrder(String userId, String userEmail, String userName,
-                                    String orderDescription, BigDecimal totalAmount) {
+                                    String orderDescription, BigDecimal totalAmount, String shippingAddress) {
         return Order.builder()
                 .userId(userId)
                 .userEmail(userEmail)
@@ -95,6 +98,7 @@ public class Order {
                 .orderDescription(orderDescription)
                 .totalAmount(totalAmount)
                 .status(OrderStatus.CREATED)
+                .shippingAddress(shippingAddress)
                 .build();
     }
 

@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import Header from '@/layouts/components/header';
 import { ORDER, FILTER_OPTIONS, COLORS } from '@/core/config/constants';
 
 interface Order {

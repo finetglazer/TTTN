@@ -185,6 +185,7 @@ public class Constant {
     public static final String COLUMN_USER_NAME = "user_name";
     public static final String COLUMN_ORDER_DESCRIPTION = "order_description";
     public static final String COLUMN_TOTAL_AMOUNT = "total_amount";
+    public static final String COLUMN_SHIPPING_ADDRESS = "shipping_address";
     public static final String COLUMN_STATUS = "status";
     public static final String COLUMN_CREATED_AT = "created_at";
     public static final String COLUMN_UPDATED_AT = "updated_at";

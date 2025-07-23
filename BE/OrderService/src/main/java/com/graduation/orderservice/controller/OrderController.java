@@ -45,7 +45,8 @@ public class OrderController {
                     request.getUserEmail(),
                     request.getUserName(),
                     request.getOrderDescription(),
-                    request.getTotalAmount()
+                    request.getTotalAmount(),
+                    request.getShippingAddress()
             );
 
             Map<String, Object> response = Map.of(

@@ -3,11 +3,17 @@
 // API & HTTP
 export const HTTP_STATUS = {
   OK: 200,
+  CREATED: 201,
+  BAD_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  NOT_FOUND: 404,
   ERROR: 500,
 } as const;
 
 export const API = {
+  BASE_URL: 'http://localhost:8080/api', // 🔥 Added base URL
   DEFAULT_VERSION: '1.0.0',
+  TIMEOUT: 10000, // 10 seconds
   HEALTH_STATUS: {
     HEALTHY: 'healthy',
     UNHEALTHY: 'unhealthy',
@@ -18,6 +24,18 @@ export const API = {
   CACHE_CONTROL: {
     NO_CACHE: 'no-cache',
   },
+  ENDPOINTS: {
+    ORDERS: {
+      CREATE: '/api/orders/create',
+      LIST: '/api/orders',
+      DETAIL: '/api/orders',
+      CANCEL: '/api/orders',
+    },
+    PAYMENTS: {
+      PROCESS: '/api/payments/process',
+      STATUS: '/api/payments/status',
+    }
+  }
 } as const;
 
 // UI & Colors
@@ -47,8 +65,8 @@ export const ORDER = {
 // Routes
 export const ROUTES = {
   HOME: '/',
-  ORDERS: '/orders',
-  CREATE_ORDER: '/create-order',
+  DASHBOARD: '/orders',
+  CREATE_ORDER: '/orders/create',
   ABOUT: '/about',
   CONTACT: '/contact',
   PRIVACY: '/privacy',
@@ -66,9 +84,14 @@ export const NAVIGATION = [
 export const MESSAGES = {
   SUCCESS: {
     ORDER_CREATED: 'Order created successfully!',
+    ORDER_CANCELLED: 'Order cancelled successfully!',
   },
   ERROR: {
     INTERNAL_SERVER: 'Internal server error',
+    NETWORK_ERROR: 'Network error. Please check your connection.',
+    ORDER_CREATE_FAILED: 'Failed to create order. Please try again.',
+    ORDER_CANCEL_FAILED: 'Failed to cancel order. Please try again.',
+    VALIDATION_ERROR: 'Please check your input and try again.',
   },
 } as const;
 

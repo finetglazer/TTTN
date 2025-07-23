@@ -36,7 +36,8 @@ Content-Type: application/json
   "userEmail": "workflow@example.com",
   "userName": "Workflow Test User",
   "orderDescription": "End-to-end workflow test order",
-  "totalAmount": 999.99
+  "totalAmount": 999.99,
+  "shippingAddress": "Ha Noi"
 }
 
 ###

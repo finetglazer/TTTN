@@ -33,7 +33,7 @@ public class OrderCommandHandlerService {
      */
     @Transactional
     public Order createOrder(String userId, String userEmail, String userName,
-                             String orderDescription, BigDecimal totalAmount) {
+                             String orderDescription, BigDecimal totalAmount, String shippingAddress) {
 
         log.info(Constant.LOG_CREATING_ORDER, userId, totalAmount);
 
@@ -42,7 +42,7 @@ public class OrderCommandHandlerService {
             We had checked data from the request successfully! => No need here
              */
             // Create the order
-            Order order = Order.createOrder(userId, userEmail, userName, orderDescription, totalAmount);
+            Order order = Order.createOrder(userId, userEmail, userName, orderDescription, totalAmount, shippingAddress);
 
             // Save to database
             Order savedOrder = orderRepository.save(order);

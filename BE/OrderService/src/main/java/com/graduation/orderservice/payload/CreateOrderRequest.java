@@ -34,6 +34,8 @@ public class CreateOrderRequest {
     @Digits(integer = 10, fraction = 2, message = Constant.VALIDATION_INVALID_AMOUNT_FORMAT)
     private BigDecimal totalAmount;
 
+    private String shippingAddress;
+
     @Override
     public String toString() {
         return String.format(Constant.FORMAT_CREATE_ORDER_REQUEST_TOSTRING,

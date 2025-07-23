@@ -18,7 +18,7 @@ export default function WelcomePage() {
         setIsTransitioning(true);
         // Wait for animation to complete before navigation
         setTimeout(() => {
-            router.push(ROUTES.ORDERS);
+            router.push(ROUTES.DASHBOARD);
         }, TIMING.TRANSITION_TIMEOUT);
     };
 
