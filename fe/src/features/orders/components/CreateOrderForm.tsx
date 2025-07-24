@@ -5,8 +5,23 @@ import { ORDER, PLACEHOLDERS, MESSAGES } from '@/core/config/constants';
 import { useCreateOrder } from '@/features/orders/hooks/orders.hooks';
 import { CreateOrderRequest, OrderItem, NewItem} from '@/features/orders/types/orders.create.types';
 import OrderSuccessNotification from './OrderSuccessNotification';
+import { createOrderRequestSchema } from '@/features/orders/validations/orders.schema';
+import { z } from 'zod';
 
+// Type for validation errors
+type ValidationErrors = {
+    [key: string]: string;
+};
 
+// Error message component
+const ErrorMessage = ({ message }: { message: string }) => (
+    <p className="text-red-500 text-sm mt-1 flex items-center">
+        <svg className="w-4 h-4 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+        </svg>
+        {message}
+    </p>
+);
 
 export default function CreateOrderForm() {
     const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
@@ -22,10 +37,22 @@ export default function CreateOrderForm() {
         quantity: ORDER.DEFAULT_QUANTITY
     });
 
-    // Add notification state
+    // Add validation errors state
+    const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
     const [showSuccessNotification, setShowSuccessNotification] = useState(false);
 
     const createOrderMutation = useCreateOrder();
+
+    // Clear error for specific field
+    const clearFieldError = (fieldName: string) => {
+        if (validationErrors[fieldName]) {
+            setValidationErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[fieldName];
+                return newErrors;
+            });
+        }
+    };
 
     const addItem = () => {
         if (newItem.name && newItem.price) {
@@ -51,11 +78,14 @@ export default function CreateOrderForm() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Prepare order data for API
+        // Clear previous validation errors
+        setValidationErrors({});
+
+        // Prepare order data for validation
         const orderDescription = orderItems
             .map(item => `${item.name} (x${item.quantity}) - $${(item.price * item.quantity).toFixed(2)}`)
             .join(', ');
-        // random userId for demo purposes
+
         const userId = 'user_' + Math.random().toString(36).substring(2, 15);
 
         const orderData: CreateOrderRequest = {
@@ -67,18 +97,59 @@ export default function CreateOrderForm() {
             shippingAddress: customerInfo.address,
         };
 
+        // Validate data before sending
+        try {
+            createOrderRequestSchema.parse(orderData);
+        } catch (error) {
+            if (error instanceof z.ZodError) {
+                const newErrors: ValidationErrors = {};
+                error.issues.forEach((err: z.ZodIssue) => {
+                    const fieldName = err.path[0] as string;
+                    newErrors[fieldName] = err.message;
+                });
+                setValidationErrors(newErrors);
+                return; // Don't submit if validation fails
+            }
+        }
+
+        // Additional custom validation for order items
+        if (orderItems.length === 0) {
+            setValidationErrors({ orderItems: 'Please add at least one item to your order' });
+            return;
+        }
+
         createOrderMutation.mutate(orderData, {
             onSuccess: (data) => {
-                // Replace alert with notification
                 setShowSuccessNotification(true);
-                // Reset form
+                // Reset form and clear errors
                 setOrderItems([]);
                 setCustomerInfo({ name: '', email: '', phone: '', address: '' });
+                setValidationErrors({});
                 console.log('Order created successfully:', data);
             },
-            onError: (error) => {
-                alert('Failed to create order. Please try again.');
+            onError: (error: any) => {
                 console.error('Order creation failed:', error);
+
+                // Handle different types of errors
+                if (error instanceof z.ZodError) {
+                    // Handle Zod validation errors
+                    const newErrors: ValidationErrors = {};
+                    error.issues.forEach((err: z.ZodIssue) => {
+                        const fieldName = err.path[0] as string;
+                        newErrors[fieldName] = err.message;
+                    });
+                    setValidationErrors(newErrors);
+                } else if (error?.response?.data?.message) {
+                    // Handle API errors with specific messages
+                    setValidationErrors({
+                        general: error.response.data.message
+                    });
+                } else {
+                    // Handle generic errors
+                    setValidationErrors({
+                        general: 'Failed to create order. Please check your information and try again.'
+                    });
+                }
             },
         });
     };
@@ -88,6 +159,13 @@ export default function CreateOrderForm() {
             <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Order Form - Left Side */}
                 <div className="lg:col-span-2 space-y-8">
+                    {/* General Error Message */}
+                    {validationErrors.general && (
+                        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                            <ErrorMessage message={validationErrors.general} />
+                        </div>
+                    )}
+
                     {/* Customer Information */}
                     <div className="card">
                         <h2 className="text-xl font-semibold text-[#1a1a1a] mb-6 pb-2 border-b-2 border-[#f6d55c]">
@@ -98,23 +176,31 @@ export default function CreateOrderForm() {
                                 <label className="form-label">Full Name *</label>
                                 <input
                                     type="text"
-                                    className="form-input"
+                                    className={`form-input ${validationErrors.userName ? 'border-red-500 focus:border-red-500' : ''}`}
                                     placeholder={PLACEHOLDERS.CUSTOMER_NAME}
                                     value={customerInfo.name}
-                                    onChange={(e) => setCustomerInfo({...customerInfo, name: e.target.value})}
+                                    onChange={(e) => {
+                                        setCustomerInfo({...customerInfo, name: e.target.value});
+                                        clearFieldError('userName');
+                                    }}
                                     required
                                 />
+                                {validationErrors.userName && <ErrorMessage message={validationErrors.userName} />}
                             </div>
                             <div>
                                 <label className="form-label">Email *</label>
                                 <input
                                     type="email"
-                                    className="form-input"
+                                    className={`form-input ${validationErrors.userEmail ? 'border-red-500 focus:border-red-500' : ''}`}
                                     placeholder={PLACEHOLDERS.EMAIL}
                                     value={customerInfo.email}
-                                    onChange={(e) => setCustomerInfo({...customerInfo, email: e.target.value})}
+                                    onChange={(e) => {
+                                        setCustomerInfo({...customerInfo, email: e.target.value});
+                                        clearFieldError('userEmail');
+                                    }}
                                     required
                                 />
+                                {validationErrors.userEmail && <ErrorMessage message={validationErrors.userEmail} />}
                             </div>
                             <div>
                                 <label className="form-label">Phone Number</label>
@@ -130,12 +216,16 @@ export default function CreateOrderForm() {
                                 <label className="form-label">Shipping Address *</label>
                                 <input
                                     type="text"
-                                    className="form-input"
+                                    className={`form-input ${validationErrors.shippingAddress ? 'border-red-500 focus:border-red-500' : ''}`}
                                     placeholder={PLACEHOLDERS.ADDRESS}
                                     value={customerInfo.address}
-                                    onChange={(e) => setCustomerInfo({...customerInfo, address: e.target.value})}
+                                    onChange={(e) => {
+                                        setCustomerInfo({...customerInfo, address: e.target.value});
+                                        clearFieldError('shippingAddress');
+                                    }}
                                     required
                                 />
+                                {validationErrors.shippingAddress && <ErrorMessage message={validationErrors.shippingAddress} />}
                             </div>
                         </div>
                     </div>
@@ -159,10 +249,11 @@ export default function CreateOrderForm() {
                                 />
                             </div>
                             <div>
-                                <label className="form-label">Price ($)</label>
+                                <label className="form-label">Price</label>
                                 <input
                                     type="number"
                                     step={ORDER.PRICE_STEP}
+                                    min="0"
                                     className="form-input"
                                     placeholder={PLACEHOLDERS.PRICE}
                                     value={newItem.price}
@@ -173,46 +264,51 @@ export default function CreateOrderForm() {
                                 <label className="form-label">Quantity</label>
                                 <input
                                     type="number"
-                                    min={ORDER.MIN_QUANTITY.toString()}
+                                    min={ORDER.MIN_QUANTITY}
                                     className="form-input"
                                     value={newItem.quantity}
-                                    onChange={(e) => setNewItem({...newItem, quantity: parseInt(e.target.value)})}
+                                    onChange={(e) => setNewItem({...newItem, quantity: parseInt(e.target.value) || ORDER.DEFAULT_QUANTITY})}
                                 />
                             </div>
                             <div className="flex items-end">
                                 <button
                                     type="button"
                                     onClick={addItem}
-                                    className="btn-primary w-full"
+                                    className="btn-secondary w-full h-12"
+                                    disabled={!newItem.name || !newItem.price}
                                 >
                                     Add Item
                                 </button>
                             </div>
                         </div>
 
-                        {/* Items List */}
-                        {orderItems.length === 0 ? (
-                            <p className="text-[#718096] text-center py-8">No items added yet</p>
-                        ) : (
+                        {/* Order Items Error */}
+                        {validationErrors.orderItems && <ErrorMessage message={validationErrors.orderItems} />}
+
+                        {/* Current Items */}
+                        {orderItems.length > 0 && (
                             <div className="space-y-3">
                                 {orderItems.map((item) => (
-                                    <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                                        <div className="flex-1">
-                                            <h4 className="font-medium text-[#2d3748]">{item.name}</h4>
-                                            <p className="text-sm text-[#718096]">
+                                    <div key={item.id} className="flex justify-between items-center p-3 bg-[#f7fafc] rounded-lg">
+                                        <div>
+                                            <span className="font-medium text-[#2d3748]">{item.name}</span>
+                                            <span className="text-sm text-[#718096] ml-2">
                                                 ${item.price.toFixed(2)} × {item.quantity}
-                                            </p>
+                                            </span>
                                         </div>
-                                        <div className="flex items-center space-x-3">
-                                            <span className="font-semibold text-[#1a1a1a]">
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-semibold text-[#f6d55c]">
                                                 ${(item.price * item.quantity).toFixed(2)}
                                             </span>
                                             <button
                                                 type="button"
                                                 onClick={() => removeItem(item.id)}
-                                                className="text-red-500 hover:text-red-700 text-sm"
+                                                className="text-red-500 hover:text-red-700 p-1"
+                                                title="Remove item"
                                             >
-                                                Remove
+                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                </svg>
                                             </button>
                                         </div>
                                     </div>
@@ -281,6 +377,12 @@ export default function CreateOrderForm() {
                             <p className="text-sm text-[#718096] text-center mt-2">
                                 Please wait while we process your order...
                             </p>
+                        )}
+
+                        {validationErrors.totalAmount && (
+                            <div className="mt-2">
+                                <ErrorMessage message={validationErrors.totalAmount} />
+                            </div>
                         )}
                     </div>
                 </div>
