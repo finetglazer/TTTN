@@ -40,7 +40,7 @@ public class OrderController {
      * This will create the order and trigger the saga
      */
     @PostMapping("/create")
-    public ResponseEntity<Map<String, Object>> createOrder(@Valid @RequestBody CreateOrderRequest request) {
+    public ResponseEntity<?> createOrder(@Valid @RequestBody CreateOrderRequest request) {
         try {
             log.info(Constant.LOG_CREATING_ORDER, request.getUserId(), request.getTotalAmount());
 
@@ -53,25 +53,11 @@ public class OrderController {
                     request.getShippingAddress()
             );
 
-            Map<String, Object> response = Map.of(
-                    Constant.RESPONSE_SUCCESS, true,
-                    Constant.RESPONSE_MESSAGE, Constant.ORDER_CREATED_SUCCESS,
-                    Constant.RESPONSE_ORDER, createdOrder.getOrderDetails(),
-                    Constant.RESPONSE_SAGA_ID, createdOrder.getSagaId() != null ? createdOrder.getSagaId() : Constant.SAGA_ID_PENDING
-            );
-
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            return ResponseEntity.ok(new BaseResponse<>(1,Constant.ORDER_CREATED_SUCCESS,createdOrder.getOrderDetails()));
 
         } catch (Exception e) {
             log.error(Constant.LOG_ERROR_CREATING_ORDER, request.getUserId(), e);
-
-            Map<String, Object> errorResponse = Map.of(
-                    Constant.RESPONSE_SUCCESS, false,
-                    Constant.RESPONSE_MESSAGE, Constant.FAILED_TO_CREATE_ORDER + e.getMessage(),
-                    Constant.RESPONSE_ERROR, e.getClass().getSimpleName()
-            );
-
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+            return ResponseEntity.ok(new BaseResponse<>(0, Constant.FAILED_TO_CREATE_ORDER, e.getClass().getSimpleName()));
         }
     }
     /**

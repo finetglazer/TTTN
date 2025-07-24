@@ -15,7 +15,7 @@ export interface Order {
 }
 
 export interface CreateOrderRequest {
-    userId: String;
+    userId: string;
     userEmail: string;
     userName: string;
     orderDescription: string;

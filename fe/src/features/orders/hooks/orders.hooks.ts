@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ordersApi } from "@/features/orders/api/orders.api";
-import {CreateOrderRequest, OrdersDashboardDisplay} from "@/features/orders/types/orders.create.types";
+import {CreateOrderRequest} from "@/features/orders/types/orders.create.types";
 import {useEffect} from "react";
+import {OrdersDashboardDisplay} from "@/features/orders/types/orders.dashboard.types";
 
 // Query key factory for better organization
 export const ordersKeys = {

@@ -1,30 +1,25 @@
 import { axiosClient } from '@/core/config/axios-client';
 import {Order, CreateOrderRequest} from '../types/orders.create.types';
-import { formSchema } from '@/features/orders/validations/orders.schema';
+import {CreateOrderResponse, createOrderResponseSchema, formSchema} from '@/features/orders/validations/orders.schema';
 import {API, ROUTES} from '@/core/config/constants';
 import {GetAllOrdersResponse, OrdersDashboardDisplay} from "@/features/orders/types/orders.dashboard.types";
+import {getAllOrdersResponseSchema} from "@/features/orders/validations/orders.status.schema";
 
 export const ordersApi = {
     // POST - Create new order
-    createOrder: async (orderData: CreateOrderRequest): Promise<Order> => {
+    createOrder: async (orderData: CreateOrderRequest): Promise<CreateOrderResponse> => {
         // Validate input data using Zod schema
-        const validatedData = formSchema.parse({
-            userId: orderData.userId, // Assuming userId maps to userEmail for validation
-            userEmail: orderData.userEmail,
-            name: orderData.userName,
-            description: orderData.orderDescription,
-            amount: orderData.totalAmount.toFixed(2), // Convert number to string with 2 decimals
-            shippingAddress: orderData.shippingAddress,
-        });
+        const validatedData = formSchema.parse(orderData);
 
         // Send API request with the original structure expected by backend
-        const { data } = await axiosClient.post<Order>(API.ENDPOINTS.ORDERS.CREATE, orderData);
-        return data;
+        const { data } = await axiosClient.post<CreateOrderResponse>(API.ENDPOINTS.ORDERS.CREATE, validatedData);
+        return createOrderResponseSchema.parse(data);
     },
 
     // GET - Fetch all orders
     getAllOrders: async (): Promise<OrdersDashboardDisplay[]> => {
         const { data } = await axiosClient.get<GetAllOrdersResponse>(API.ENDPOINTS.ORDERS.LIST);
-        return data.data;
+        const validated = getAllOrdersResponseSchema.parse(data);
+        return validated.data;
     },
 };

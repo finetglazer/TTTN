@@ -11,7 +11,7 @@ export const HTTP_STATUS = {
 } as const;
 
 export const API = {
-  BASE_URL: 'http://localhost:8080/api', // 🔥 Added base URL
+  BASE_URL: 'http://localhost:8080', // 🔥 Added base URL
   DEFAULT_VERSION: '1.0.0',
   TIMEOUT: 10000, // 10 seconds
   HEALTH_STATUS: {

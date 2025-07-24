@@ -11,7 +11,8 @@ const orderStatusSchema = z.enum([
 
 // Schema for individual order item
 const ordersDashboardDisplaySchema = z.object({
-    orderId: z.string(),
+    // orderId = ORD_ + string
+    orderId: z.string().transform(id => `ORD_${id}`),
     orderDescription: z.string(),
     userName: z.string(),
     // Handle BigDecimal -> number conversion
@@ -48,7 +49,3 @@ export {
     getAllOrdersResponseSchema,
     orderStatusSchema
 };
-
-// Export the inferred types
-export type OrdersDashboardDisplay = z.infer<typeof ordersDashboardDisplaySchema>;
-export type GetAllOrdersResponse = z.infer<typeof getAllOrdersResponseSchema>;
