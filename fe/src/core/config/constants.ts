@@ -27,7 +27,7 @@ export const API = {
   ENDPOINTS: {
     ORDERS: {
       CREATE: '/api/orders/create',
-      LIST: '/api/orders',
+      LIST: '/api/orders/all',
       DETAIL: '/api/orders',
       CANCEL: '/api/orders',
     },

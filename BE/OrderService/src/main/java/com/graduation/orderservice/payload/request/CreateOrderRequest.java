@@ -1,4 +1,4 @@
-package com.graduation.orderservice.payload;
+package com.graduation.orderservice.payload.request;
 
 import com.graduation.orderservice.constant.Constant;
 import jakarta.validation.constraints.*;

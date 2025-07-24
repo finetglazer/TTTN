@@ -1,7 +1,8 @@
 import { axiosClient } from '@/core/config/axios-client';
-import { Order, CreateOrderRequest } from '../types/orders.types';
+import {Order, CreateOrderRequest} from '../types/orders.create.types';
 import { formSchema } from '@/features/orders/validations/orders.schema';
-import { ROUTES } from '@/core/config/constants';
+import {API, ROUTES} from '@/core/config/constants';
+import {GetAllOrdersResponse, OrdersDashboardDisplay} from "@/features/orders/types/orders.dashboard.types";
 
 export const ordersApi = {
     // POST - Create new order
@@ -17,7 +18,13 @@ export const ordersApi = {
         });
 
         // Send API request with the original structure expected by backend
-        const { data } = await axiosClient.post<Order>(ROUTES.CREATE_ORDER, orderData);
+        const { data } = await axiosClient.post<Order>(API.ENDPOINTS.ORDERS.CREATE, orderData);
         return data;
+    },
+
+    // GET - Fetch all orders
+    getAllOrders: async (): Promise<OrdersDashboardDisplay[]> => {
+        const { data } = await axiosClient.get<GetAllOrdersResponse>(API.ENDPOINTS.ORDERS.LIST);
+        return data.data;
     },
 };

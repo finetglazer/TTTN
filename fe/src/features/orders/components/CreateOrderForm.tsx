@@ -3,21 +3,10 @@
 import { useState } from 'react';
 import { ORDER, PLACEHOLDERS, MESSAGES } from '@/core/config/constants';
 import { useCreateOrder } from '@/features/orders/hooks/orders.hooks';
-import { CreateOrderRequest } from '@/features/orders/types/orders.types';
+import { CreateOrderRequest, OrderItem, NewItem} from '@/features/orders/types/orders.create.types';
 import OrderSuccessNotification from './OrderSuccessNotification';
 
-interface OrderItem {
-    id: string;
-    name: string;
-    price: number;
-    quantity: number;
-}
 
-interface NewItem {
-    name: string;
-    price: string;
-    quantity: number;
-}
 
 export default function CreateOrderForm() {
     const [orderItems, setOrderItems] = useState<OrderItem[]>([]);

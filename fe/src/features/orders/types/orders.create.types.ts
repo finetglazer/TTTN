@@ -22,3 +22,16 @@ export interface CreateOrderRequest {
     totalAmount: number;
     shippingAddress: string;
 }
+
+export interface OrderItem {
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+}
+
+export interface NewItem {
+    name: string;
+    price: string;
+    quantity: number;
+}

@@ -3,7 +3,7 @@
 // import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { COLORS, TIMING, ROUTES } from '@/core/config/constants';
+import {COLORS, TIMING, ROUTES, NAVIGATION} from '@/core/config/constants';
 
 export default function WelcomePage() {
     const [isLoaded, setIsLoaded] = useState(false);
@@ -13,7 +13,6 @@ export default function WelcomePage() {
     useEffect(() => {
         setIsLoaded(true);
     }, []);
-
     const handleTransition = () => {
         setIsTransitioning(true);
         // Wait for animation to complete before navigation

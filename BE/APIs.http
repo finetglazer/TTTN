@@ -1,0 +1,17 @@
+
+### Combined workflow test:
+### 1. First create an order (this will trigger saga)
+POST http://localhost:8080/api/orders/create
+Content-Type: application/json
+
+{
+  "userId": "workflow_test_user",
+  "userEmail": "workflow@example.com",
+  "userName": "Workflow Test User",
+  "orderDescription": "End-to-end workflow test order",
+  "totalAmount": 999.99,
+  "shippingAddress": "Ha Noi"
+}
+
+### 2. Get all orders
+GET http://localhost:8080/api/orders/all

@@ -2,9 +2,12 @@ package com.graduation.orderservice.controller;
 
 import com.graduation.orderservice.constant.Constant;
 import com.graduation.orderservice.model.Order;
-import com.graduation.orderservice.payload.CreateOrderRequest;
+import com.graduation.orderservice.payload.request.CreateOrderRequest;
+import com.graduation.orderservice.payload.response.BaseResponse;
+import com.graduation.orderservice.payload.response.GetAllOrdersResponse;
 import com.graduation.orderservice.repository.OrderRepository;
 import com.graduation.orderservice.service.OrderCommandHandlerService;
+import com.graduation.orderservice.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -30,6 +33,7 @@ public class OrderController {
 
     private final OrderCommandHandlerService orderCommandHandlerService;
     private final OrderRepository orderRepository;
+    private final OrderService orderService;
 
     /**
      * Create a new order
@@ -68,6 +72,23 @@ public class OrderController {
             );
 
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+    }
+    /**
+     * Get all orders
+     */
+
+    @GetMapping("/all")
+    public ResponseEntity<?> getAllOrders() {
+        try {
+            return ResponseEntity.ok(orderService.getAllOrders());
+
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = Map.of(
+                    Constant.RESPONSE_SUCCESS, false,
+                    Constant.RESPONSE_MESSAGE, Constant.ERROR_RETRIEVING_ORDER + e.getMessage()
+            );
+            return ResponseEntity.ok(new BaseResponse<>(0, Constant.ERROR_RETRIEVING_ORDER, errorResponse));
         }
     }
 
