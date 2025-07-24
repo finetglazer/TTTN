@@ -9,6 +9,15 @@ export interface OrdersFilterState {
     statusFilter: string;
 }
 
+// ✨ FIX: Define a specific type for an Order object
+export interface Order {
+    orderId: string;
+    userName: string;
+    orderDescription: string;
+    orderStatus: string;
+    // You can add any other properties your order object has here
+}
+
 interface OrdersFiltersProps {
     filterState: OrdersFilterState;
     onFilterChange: (filterState: OrdersFilterState) => void;
@@ -162,7 +171,8 @@ export default function OrdersFilters({
 }
 
 // Export filter logic utility
-export const filterOrders = (orders: any[], filterState: OrdersFilterState) => {
+// ✨ FIX: Changed 'any[]' to 'Order[]'
+export const filterOrders = (orders: Order[], filterState: OrdersFilterState) => {
     return orders.filter(order => {
         const matchesSearch = filterState.searchTerm === '' ||
             order.orderId.toLowerCase().includes(filterState.searchTerm.toLowerCase()) ||
