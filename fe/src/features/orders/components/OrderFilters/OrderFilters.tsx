@@ -2,6 +2,7 @@
 'use client';
 
 import { FILTER_OPTIONS } from '@/core/config/constants';
+import {OrdersDashboardDisplay} from "@/features/orders/types/orders.dashboard.types";
 
 // Types for filter state
 export interface OrdersFilterState {
@@ -172,7 +173,7 @@ export default function OrdersFilters({
 
 // Export filter logic utility
 // ✨ FIX: Changed 'any[]' to 'Order[]'
-export const filterOrders = (orders: Order[], filterState: OrdersFilterState) => {
+export const filterOrders = (orders: OrdersDashboardDisplay[], filterState: OrdersFilterState) => {
     return orders.filter(order => {
         const matchesSearch = filterState.searchTerm === '' ||
             order.orderId.toLowerCase().includes(filterState.searchTerm.toLowerCase()) ||
