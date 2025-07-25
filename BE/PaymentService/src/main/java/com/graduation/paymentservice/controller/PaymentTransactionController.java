@@ -4,6 +4,7 @@ import com.graduation.paymentservice.constant.Constant;
 import com.graduation.paymentservice.model.PaymentTransaction;
 import com.graduation.paymentservice.payload.request.GetPaymentRequest;
 import com.graduation.paymentservice.payload.response.BaseResponse;
+import com.graduation.paymentservice.payload.response.PaymentTransactionStatusResponse;
 import com.graduation.paymentservice.repository.PaymentTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -36,6 +37,22 @@ public class PaymentTransactionController {
         } catch (Exception e) {
             return ResponseEntity.ok(new BaseResponse(0, e.getClass().getSimpleName(), HttpStatus.INTERNAL_SERVER_ERROR));
         }
+    }
 
+    // API for returning Payment status
+    @GetMapping("/order/{orderId}/status")
+    public ResponseEntity<?> getPaymentStatus(@PathVariable Long orderId) {
+        try {
+            Optional<PaymentTransaction> paymentTransaction = paymentTransactionRepository.findByOrderId(String.valueOf(orderId));
+
+            if (paymentTransaction.isPresent()) {
+                return ResponseEntity.ok(new BaseResponse(1, Constant.RESPONSE_SUCCESS, new PaymentTransactionStatusResponse(orderId,String.valueOf(paymentTransaction.get().getStatus()))));
+            } else {
+                return ResponseEntity.ok(new BaseResponse(0, Constant.PAYMENT_NOT_FOUND, null));
+            }
+
+        } catch (Exception e) {
+            return ResponseEntity.ok(new BaseResponse(0, e.getClass().getSimpleName(), HttpStatus.INTERNAL_SERVER_ERROR));
+        }
     }
 }

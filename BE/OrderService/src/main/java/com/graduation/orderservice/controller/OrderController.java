@@ -4,7 +4,7 @@ import com.graduation.orderservice.constant.Constant;
 import com.graduation.orderservice.model.Order;
 import com.graduation.orderservice.payload.request.CreateOrderRequest;
 import com.graduation.orderservice.payload.response.BaseResponse;
-import com.graduation.orderservice.payload.response.GetAllOrdersResponse;
+import com.graduation.orderservice.payload.response.OrderStatusResponse;
 import com.graduation.orderservice.repository.OrderRepository;
 import com.graduation.orderservice.service.OrderCommandHandlerService;
 import com.graduation.orderservice.service.OrderService;
@@ -99,6 +99,25 @@ public class OrderController {
                     Constant.RESPONSE_MESSAGE, Constant.ERROR_RETRIEVING_ORDER + e.getMessage()
             );
             return ResponseEntity.ok(new BaseResponse<>(0,Constant.ERROR_RETRIEVING_ORDER + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR));
+        }
+    }
+
+    /**
+     * Get order status
+     */
+    @GetMapping("/{orderId}/status")
+    public ResponseEntity<?> getOrderStatus(@PathVariable Long orderId) {
+        try {
+            Optional<Order> order = orderRepository.findById(orderId);
+
+            if (order.isPresent()) {
+                return ResponseEntity.ok(new BaseResponse<>(1, Constant.RESPONSE_SUCCESS, new OrderStatusResponse(orderId ,String.valueOf(order.get().getStatus()))));
+            } else {
+                return ResponseEntity.ok(new BaseResponse<>(1, Constant.RESPONSE_SUCCESS, Constant.ORDER_NOT_FOUND));
+            }
+
+        } catch (Exception e) {
+            return ResponseEntity.ok(new BaseResponse<>(0,Constant.ERROR_RETRIEVING_ORDER_STATUS + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR));
         }
     }
 

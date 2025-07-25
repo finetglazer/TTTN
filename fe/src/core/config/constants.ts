@@ -26,14 +26,16 @@ export const API = {
   },
   ENDPOINTS: {
     ORDERS: {
+      BASE_URL: '/api/orders',
       CREATE: '/api/orders/create',
       LIST: '/api/orders/all',
-      DETAIL: '/api/orders',
-      CANCEL: '/api/orders',
+
+
     },
     PAYMENTS: {
+      BASE_URL: 'api/payments',
       PROCESS: '/api/payments/process',
-      STATUS: '/api/payments/status',
+      STATUS: '/api/payments',
     }
   }
 } as const;
@@ -61,6 +63,15 @@ export const ORDER = {
     ORDERS_PER_PAGE: 10,
   },
 } as const;
+
+export const PAYMENT = {
+  STATUS: {
+    PENDING: 'PENDING',
+    CONFIRMED: 'CONFIRMED',
+    FAILED: 'FAILED',
+    DECLINED: 'DECLINED',
+  }
+}
 
 // Routes
 export const ROUTES = {
@@ -144,3 +155,17 @@ export const FILTER_OPTIONS = [
   { value: 'DELIVERED', label: 'Delivered' },
   { value: 'CANCELLED', label: 'Cancelled' },
 ];
+
+// src/constants/queryKeys.ts
+export const ordersKeys = {
+  all: ['orders'] as const,
+  list: () => [...ordersKeys.all, 'list'] as const,
+  detail: (id: string) => [...ordersKeys.all, 'detail', id] as const,
+  status: (id: string) => [...ordersKeys.all, 'status', id] as const,
+};
+
+export const paymentsKeys = {
+  all: ['payments'] as const,
+  byOrder: (orderId: string) => [...paymentsKeys.all, 'order', orderId] as const,
+  status: (orderId: string) => [...paymentsKeys.all, 'status', orderId] as const,
+};

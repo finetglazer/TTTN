@@ -22,6 +22,7 @@ public class Constant {
     public static final String FAILED_TO_CREATE_ORDER = "Failed to create order: ";
     public static final String ERROR_RETRIEVING_ORDER = "Error retrieving order: ";
     public static final String ERROR_RETRIEVING_USER_ORDERS = "Error retrieving user orders: ";
+    public static final String ERROR_RETRIEVING_ORDER_STATUS = "Error retrieving order status: ";
 
     // ===================== DEFAULT VALUES =====================
     public static final String SAGA_ID_PENDING = "pending";

@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
-public class GetAllOrdersResponse {
+public class AllOrdersResponse {
     private String orderId;
     private String orderDescription;
     private String userName;

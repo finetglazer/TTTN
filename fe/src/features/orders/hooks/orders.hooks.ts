@@ -3,13 +3,8 @@ import { ordersApi } from "@/features/orders/api/orders.api";
 import {CreateOrderRequest} from "@/features/orders/types/orders.create.types";
 import {useEffect} from "react";
 import {OrdersDashboardDisplay} from "@/features/orders/types/orders.dashboard.types";
+import {ORDER, ordersKeys} from "@/core/config/constants";
 
-// Query key factory for better organization
-export const ordersKeys = {
-    all: ['orders'] as const,
-    list: () => [...ordersKeys.all, 'list'] as const,
-    detail: (id: string) => [...ordersKeys.all, 'detail', id] as const,
-};
 
 // Mutation hook for creating a new order
 export const useCreateOrder = () => {
@@ -90,18 +85,41 @@ export const useFetchAllOrders = () => {
 
 };
 
-// Optional: Hook to get cached orders count for UI indicators
-export const useCachedOrdersCount = () => {
-    const queryClient = useQueryClient();
-    const cachedData = queryClient.getQueryData(ordersKeys.list());
-    return Array.isArray(cachedData) ? cachedData.length : 0;
-};
+export const useOrderStatusPolling = (orderId: string) => {
+    return useQuery({
+        queryKey: ordersKeys.status(orderId),
+        queryFn: () => ordersApi.getOrderStatus(orderId),
 
-// Optional: Hook to manually refetch orders (useful for pull-to-refresh)
-export const useRefreshOrders = () => {
-    const queryClient = useQueryClient();
+        // Polling configuration
+        refetchInterval: (query) => { // Renamed 'data' to 'query' for clarity
+            const status = query.state.data; // Access the data from the query state
 
-    return () => {
-        return queryClient.invalidateQueries({ queryKey: ordersKeys.list() });
-    };
+            // Stop polling if order is delivered
+            if (status === ORDER.STATUS.DELIVERED) return false;
+
+            // Different intervals based on status
+            if (status === ORDER.STATUS.CREATED) {
+                return 5 * 1000; // 5 seconds for active states
+            }
+            return 30 * 1000; // 30 seconds for other states
+        },
+        refetchIntervalInBackground: false,
+
+        // Cache configuration
+        staleTime: (query) => {
+            const status = query.state.data;
+
+            // Delivered orders: NEVER refetch
+            if (status === ORDER.STATUS.DELIVERED) {
+                return Infinity; // ✨ Endless cache!
+            }
+
+            return 0;
+        },
+
+        gcTime: Infinity, // Keep forever
+        // Only start polling if orderId exists
+        enabled: !!orderId,
+        networkMode: 'offlineFirst',
+    });
 };
