@@ -15,3 +15,9 @@ Content-Type: application/json
 
 ### 2. Get all orders
 GET http://localhost:8080/api/orders/all
+
+### 3. Get order by orderId
+GET http://localhost:8080/api/orders/1
+
+### 4. Get paymentTransaction by orderId
+GET http://localhost:8080/api/payments/order/1

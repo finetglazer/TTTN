@@ -14,3 +14,9 @@ export interface GetAllOrdersResponse {
     msg: string;
     data: OrdersDashboardDisplay[];
 }
+
+export interface OrdersTableProps {
+    orders: OrdersDashboardDisplay[];
+    isLoading?: boolean;
+    error?: Error | null;
+}

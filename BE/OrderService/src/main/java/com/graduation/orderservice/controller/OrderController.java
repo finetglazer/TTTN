@@ -82,22 +82,14 @@ public class OrderController {
      * Get order by ID
      */
     @GetMapping("/{orderId}")
-    public ResponseEntity<Map<String, Object>> getOrder(@PathVariable Long orderId) {
+    public ResponseEntity<?> getOrder(@PathVariable Long orderId) {
         try {
             Optional<Order> order = orderRepository.findById(orderId);
 
             if (order.isPresent()) {
-                Map<String, Object> response = Map.of(
-                        Constant.RESPONSE_SUCCESS, true,
-                        Constant.RESPONSE_ORDER, order.get().getOrderDetails()
-                );
-                return ResponseEntity.ok(response);
+                return ResponseEntity.ok(new BaseResponse<>(1, Constant.RESPONSE_SUCCESS, order.get().getOrderDetails()));
             } else {
-                Map<String, Object> response = Map.of(
-                        Constant.RESPONSE_SUCCESS, false,
-                        Constant.RESPONSE_MESSAGE, Constant.ORDER_NOT_FOUND
-                );
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                return ResponseEntity.ok(new BaseResponse<>(1, Constant.RESPONSE_SUCCESS, Constant.ORDER_NOT_FOUND));
             }
 
         } catch (Exception e) {
@@ -106,7 +98,7 @@ public class OrderController {
                     Constant.RESPONSE_SUCCESS, false,
                     Constant.RESPONSE_MESSAGE, Constant.ERROR_RETRIEVING_ORDER + e.getMessage()
             );
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            return ResponseEntity.ok(new BaseResponse<>(0,Constant.ERROR_RETRIEVING_ORDER + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR));
         }
     }
 

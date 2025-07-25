@@ -10,15 +10,6 @@ export interface OrdersFilterState {
     statusFilter: string;
 }
 
-// ✨ FIX: Define a specific type for an Order object
-export interface Order {
-    orderId: string;
-    userName: string;
-    orderDescription: string;
-    orderStatus: string;
-    // You can add any other properties your order object has here
-}
-
 interface OrdersFiltersProps {
     filterState: OrdersFilterState;
     onFilterChange: (filterState: OrdersFilterState) => void;

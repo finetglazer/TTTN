@@ -3,13 +3,9 @@
 
 import { useState, useMemo } from 'react';
 import { ORDER, COLORS } from '@/core/config/constants';
-import { OrdersDashboardDisplay } from '@/features/orders/types/orders.dashboard.types';
+import {OrdersDashboardDisplay, OrdersTableProps} from '@/features/orders/types/orders.dashboard.types';
 
-interface OrdersTableProps {
-    orders: OrdersDashboardDisplay[];
-    isLoading?: boolean;
-    error?: Error | null;
-}
+
 
 // Sub-component for status badge
 function StatusBadge({ status }: { status: string }) {
