@@ -8,6 +8,7 @@ const OrderDetailSchema = z.object({
     userEmail: z.string().email(),
     userName: z.string(),
     orderDescription: z.string(),
+    status: z.string(),
     totalAmount: z.number(),
     createdAt: z.string(),
     // Exclude: sagaId (internal workflow tracking)

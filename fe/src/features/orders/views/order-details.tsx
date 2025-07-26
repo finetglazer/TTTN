@@ -19,7 +19,17 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
     const router = useRouter();
     //exclude ORD_ from orderId
     orderId = orderId.replace('ORD_', '');
-    const { data, isLoading, isError, error } = useOrderDetails(orderId);
+
+    // 🎯 NOW GET LIVE STATUS DATA FROM THE HOOK
+    const {
+        data,
+        isLoading,
+        isError,
+        error,
+        liveOrderStatus,      // Live order status 🔴
+        livePaymentStatus,    // Live payment status 🔴
+        statusLoading
+    } = useOrderDetails(orderId);
 
     // Loading state
     if (isLoading) {
@@ -53,6 +63,10 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
 
     const { order, payment } = data;
 
+    // 🎯 USE LIVE STATUS WITH FALLBACKS
+    const currentOrderStatus = liveOrderStatus || order.status;
+    const currentPaymentStatus = livePaymentStatus || payment.status;
+
     return (
         <div className="min-h-screen bg-[#f7fafc]">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -62,11 +76,17 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                     onBack={() => router.push('/orders')}
                 />
 
-                {/* Status Timeline */}
+                {/* Status Timeline - NOW WITH LIVE DATA! */}
                 <div className="mb-8">
+                    {statusLoading && (
+                        <div className="text-sm text-[#718096] mb-2 flex items-center gap-2">
+                            <div className="w-3 h-3 border-2 border-[#f6d55c] border-t-transparent rounded-full animate-spin"></div>
+                            Checking latest status...
+                        </div>
+                    )}
                     <StatusTimeline
-                        orderStatus={'CREATED'} // Default for now - will be enhanced with order status polling
-                        paymentStatus={payment.status}
+                        orderStatus={currentOrderStatus}     // ✅ Live order status
+                        paymentStatus={currentPaymentStatus} // ✅ Live payment status
                         createdAt={order.createdAt}
                         processedAt={payment.processedAt}
                     />
@@ -77,9 +97,31 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                     {/* Order Details Card */}
                     <OrderDetailsCard order={order} />
 
-                    {/* Payment Information Card */}
-                    <PaymentInformationCard payment={payment} />
+                    {/* Payment Information Card - Also show live status */}
+                    <PaymentInformationCard
+                        payment={{
+                            ...payment,
+                            status: currentPaymentStatus // Update with live status
+                        }}
+                    />
                 </div>
+
+                {/* Optional: Status Change Indicator */}
+                {(liveOrderStatus && liveOrderStatus !== order.status) && (
+                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-700">
+                            ✅ Order status updated to: <strong>{liveOrderStatus}</strong>
+                        </p>
+                    </div>
+                )}
+
+                {(livePaymentStatus && livePaymentStatus !== payment.status) && (
+                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-sm text-blue-700">
+                            💳 Payment status updated to: <strong>{livePaymentStatus}</strong>
+                        </p>
+                    </div>
+                )}
             </div>
         </div>
     );

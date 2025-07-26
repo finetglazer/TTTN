@@ -1,4 +1,4 @@
-// src/hooks/useOrderDetails.ts
+// fe/src/features/orders/hooks/useOrderDetails.ts
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { ordersApi } from '../api/orders.api';
@@ -29,28 +29,17 @@ export const useOrderDetails = (orderId: string) => {
         enabled: !!orderId,
     });
 
-    // Status polling hooks
-    const { data: orderStatus } = useOrderStatusPolling(orderId);
-    const { data: paymentStatus } = usePaymentStatusPolling(orderId);
+    // Status polling hooks - NOW EXPOSE THESE TO THE COMPONENT
+    const { data: liveOrderStatus, isLoading: orderStatusLoading } = useOrderStatusPolling(orderId);
+    const { data: livePaymentStatus, isLoading: paymentStatusLoading } = usePaymentStatusPolling(orderId);
 
-    // Invalidate main queries when status changes =>
-    /*
-    * This is no need now because we do not update any information of order
-    *
-     */
-    // useEffect(() => {
-    //     if (orderStatus && orderQuery.data?.status !== orderStatus) {
-    //         console.log(`Order status changed to: ${orderStatus}`);
-    //         queryClient.invalidateQueries({ queryKey: ordersKeys.detail(orderId) });
-    //     }
-    // }, [orderStatus, orderQuery.data?.status, queryClient, orderId]);
-
+    // Invalidate main queries when status changes
     useEffect(() => {
-        if (paymentStatus && paymentQuery.data?.status !== paymentStatus) {
-            console.log(`Payment status changed to: ${paymentStatus}`);
+        if (livePaymentStatus && paymentQuery.data?.status !== livePaymentStatus) {
+            console.log(`Payment status changed to: ${livePaymentStatus}`);
             queryClient.invalidateQueries({ queryKey: paymentsKeys.byOrder(orderId) });
         }
-    }, [paymentStatus, paymentQuery.data?.status, queryClient, orderId]);
+    }, [livePaymentStatus, paymentQuery.data?.status, queryClient, orderId]);
 
     // Combine states for clean interface
     const isLoading = orderQuery.isLoading || paymentQuery.isLoading;
@@ -75,6 +64,12 @@ export const useOrderDetails = (orderId: string) => {
         isError,
         isSuccess,
         error,
+
+        // 🎯 NEW: Expose live polling data
+        liveOrderStatus,      // Live order status from polling
+        livePaymentStatus,    // Live payment status from polling
+        statusLoading: orderStatusLoading || paymentStatusLoading,
+
         // Expose individual states if needed
         orderQuery,
         paymentQuery,

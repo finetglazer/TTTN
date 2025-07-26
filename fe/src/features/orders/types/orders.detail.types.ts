@@ -6,6 +6,7 @@ export interface OrderDetail {
     userId: string;
     userEmail: string;
     userName: string;
+    status: string;
     orderDescription: string;
     totalAmount: number;
     createdAt: string;
