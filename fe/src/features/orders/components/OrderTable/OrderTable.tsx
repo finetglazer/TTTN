@@ -4,6 +4,7 @@
 import { useState, useMemo } from 'react';
 import { ORDER, COLORS } from '@/core/config/constants';
 import {OrdersDashboardDisplay, OrdersTableProps} from '@/features/orders/types/orders.dashboard.types';
+import {useRouter} from "next/navigation";
 
 
 
@@ -28,14 +29,32 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 // Sub-component for order row actions
+// Enhanced OrderRowActions component with navigation
 function OrderRowActions({ order }: { order: OrdersDashboardDisplay }) {
+    const router = useRouter();
+
+    const handleViewDetails = () => {
+        router.push(`/orders/${order.orderId}`);
+    };
+
+    const handleCancel = () => {
+        // Add your cancel logic here
+        console.log('Cancel order:', order.orderId);
+    };
+
     return (
         <div className="flex items-center space-x-2">
-            <button className="btn-ghost text-sm">
+            <button
+                onClick={handleViewDetails}
+                className="btn-ghost text-sm"
+            >
                 View Details
             </button>
             {order.orderStatus === ORDER.STATUS.CREATED && (
-                <button className="text-red-600 hover:text-red-800 text-sm">
+                <button
+                    onClick={handleCancel}
+                    className="text-red-600 hover:text-red-800 text-sm"
+                >
                     Cancel
                 </button>
             )}

@@ -7,6 +7,7 @@ import type { OrderDetailsData } from '../types/orders.detail.types';
 import {ordersKeys, paymentsKeys} from "@/core/config/constants";
 import {paymentsApi} from "@/features/payments/api/payments.api";
 import {usePaymentStatusPolling} from "@/features/payments/hooks/payments.hooks";
+import {useOrderStatusPolling} from "@/features/orders/hooks/orders.hooks";
 
 export const useOrderDetails = (orderId: string) => {
     const queryClient = useQueryClient();
@@ -29,7 +30,7 @@ export const useOrderDetails = (orderId: string) => {
     });
 
     // Status polling hooks
-    // const { data: orderStatus } = useOrderStatusPolling(orderId);
+    const { data: orderStatus } = useOrderStatusPolling(orderId);
     const { data: paymentStatus } = usePaymentStatusPolling(orderId);
 
     // Invalidate main queries when status changes =>

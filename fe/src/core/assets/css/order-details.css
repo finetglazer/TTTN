@@ -1,0 +1,89 @@
+/* fe/src/core/assets/css/order-details.css */
+/* Additional styles for Order Details page - add to your existing globals.css */
+
+/* Loading animation for skeleton screens */
+@keyframes shimmer {
+    0% {
+        background-position: -200px 0;
+    }
+    100% {
+        background-position: calc(200px + 100%) 0;
+    }
+}
+
+.animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: .5;
+    }
+}
+
+/* Custom button styles for consistency */
+.btn-ghost {
+    @apply px-3 py-1 border border-[#f6d55c] text-[#f6d55c] hover:bg-[#f6d55c] hover:text-[#1a1a1a] rounded-lg transition-colors duration-200 font-medium;
+}
+
+/* Status badge styles */
+.status-badge {
+    @apply px-2 py-1 rounded-full text-xs font-medium;
+}
+
+.status-created {
+    @apply bg-blue-100 text-blue-800;
+}
+
+.status-confirmed {
+    @apply bg-orange-100 text-orange-800;
+}
+
+.status-delivered {
+    @apply bg-green-100 text-green-800;
+}
+
+.status-cancelled {
+    @apply bg-red-100 text-red-800;
+}
+
+/* Mobile responsive improvements */
+@media (max-width: 768px) {
+    .order-details-grid {
+        @apply grid-cols-1 gap-4;
+    }
+
+    .order-header-actions {
+        @apply flex-col space-y-2 space-x-0;
+    }
+
+    .payment-retry-btn {
+        @apply w-full justify-center;
+    }
+
+    .status-timeline {
+        @apply px-4;
+    }
+
+    .status-timeline-step {
+        @apply text-sm;
+    }
+}
+
+/* Print styles for order details */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    .order-details-container {
+        @apply shadow-none;
+    }
+
+    .bg-gray-50 {
+        background-color: #f9f9f9 !important;
+    }
+}

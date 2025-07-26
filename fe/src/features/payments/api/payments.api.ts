@@ -1,7 +1,8 @@
 import {axiosClient} from "@/core/config/axios-client";
 import {API} from "@/core/config/constants";
-import {PaymentDetail} from "@/features/orders/types/orders.detail.types";
-import {PaymentDetailResponseSchema} from "@/features/payments/types/payment.detail.types";
+import {PaymentDetail} from "@/features/payments/types/payment.detail.types";
+import {PaymentDetailResponseSchema} from "@/features/payments/validation/paymentDetails.schema";
+
 
 
 export const paymentsApi = {
