@@ -202,3 +202,575 @@
 .animate-pulse-glow {
   animation: pulse-glow 2s infinite;
 }
+
+/* Add these luxury animation classes to your globals.css */
+
+/* ========== LUXURY PAGE ENTRANCE ANIMATIONS ========== */
+
+/* Main page entrance with elegant fade + scale */
+.page-entrance {
+  animation: luxuryPageFadeIn 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  opacity: 0;
+  transform: scale(0.98);
+}
+
+@keyframes luxuryPageFadeIn {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Header elements staggered entrance */
+.header-stagger-1 {
+  animation: headerSlideDown 0.6s cubic-bezier(0.23, 1, 0.32, 1) 0.1s forwards;
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.header-stagger-2 {
+  animation: headerSlideDown 0.6s cubic-bezier(0.23, 1, 0.32, 1) 0.2s forwards;
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.header-stagger-3 {
+  animation: headerSlideDown 0.6s cubic-bezier(0.23, 1, 0.32, 1) 0.3s forwards;
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+@keyframes headerSlideDown {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Content slide up with golden glow trail */
+.content-slide-up {
+  animation: luxurySlideUp 0.8s cubic-bezier(0.23, 1, 0.32, 1) 0.4s forwards;
+  opacity: 0;
+  transform: translateY(40px);
+}
+
+@keyframes luxurySlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  50% {
+    opacity: 0.5;
+    box-shadow: 0 5px 15px rgba(246, 213, 92, 0.1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+  }
+}
+
+/* Filters bar slide in from left with golden trail */
+.filters-slide-in {
+  animation: filtersSlideIn 0.7s cubic-bezier(0.23, 1, 0.32, 1) 0.6s forwards;
+  opacity: 0;
+  transform: translateX(-50px);
+}
+
+@keyframes filtersSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  60% {
+    box-shadow: 0 0 20px rgba(246, 213, 92, 0.2);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+  }
+}
+
+/* Table rows cascade - use with increasing delays */
+.table-row-cascade {
+  animation: tableRowCascade 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  opacity: 0;
+  transform: translateY(20px) scale(0.98);
+}
+
+/* Dynamic delays for cascade effect */
+.cascade-delay-1 { animation-delay: 0.8s; }
+.cascade-delay-2 { animation-delay: 0.9s; }
+.cascade-delay-3 { animation-delay: 1.0s; }
+.cascade-delay-4 { animation-delay: 1.1s; }
+.cascade-delay-5 { animation-delay: 1.2s; }
+.cascade-delay-6 { animation-delay: 1.3s; }
+.cascade-delay-7 { animation-delay: 1.4s; }
+.cascade-delay-8 { animation-delay: 1.5s; }
+
+@keyframes tableRowCascade {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  50% {
+    box-shadow: 0 2px 8px rgba(246, 213, 92, 0.1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    box-shadow: none;
+  }
+}
+
+/* Card materialization effect */
+.card-materialize {
+  animation: cardMaterialize 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  opacity: 0;
+  transform: translateY(30px) scale(0.95);
+}
+
+.card-materialize-left {
+  animation: cardMaterializeLeft 0.8s cubic-bezier(0.23, 1, 0.32, 1) 0.5s forwards;
+  opacity: 0;
+  transform: translateX(-40px) scale(0.95);
+}
+
+.card-materialize-right {
+  animation: cardMaterializeRight 0.8s cubic-bezier(0.23, 1, 0.32, 1) 0.7s forwards;
+  opacity: 0;
+  transform: translateX(40px) scale(0.95);
+}
+
+@keyframes cardMaterialize {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+  }
+}
+
+@keyframes cardMaterializeLeft {
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+  }
+}
+
+@keyframes cardMaterializeRight {
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+  }
+}
+
+/* Form sections progressive reveal */
+.form-section-reveal {
+  animation: formSectionReveal 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.form-reveal-delay-1 { animation-delay: 0.3s; }
+.form-reveal-delay-2 { animation-delay: 0.5s; }
+.form-reveal-delay-3 { animation-delay: 0.7s; }
+
+@keyframes formSectionReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  50% {
+    border-left: 4px solid rgba(246, 213, 92, 0.3);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    border-left: none;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .page-entrance,
+  .header-stagger-1,
+  .header-stagger-2,
+  .header-stagger-3,
+  .content-slide-up,
+  .filters-slide-in,
+  .table-row-cascade,
+  .card-materialize,
+  .card-materialize-left,
+  .card-materialize-right,
+  .form-section-reveal {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Add to globals.css */
+.luxury-shimmer .shimmer-element {
+  background: linear-gradient(90deg, #f0f0f0 25%, #f6d55c20 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: luxuryShimmer 2s infinite;
+}
+
+@keyframes luxuryShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ========== PHASE 2: INTERACTIVE ELEMENTS ========== */
+
+/* Enhanced Button Hover Effects - Luxury Hotel Style */
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(246, 213, 92, 0.4);
+}
+
+.btn-primary:hover::before {
+  left: 100%;
+}
+
+.btn-primary:active {
+  transform: translateY(-1px);
+  transition: transform 0.1s;
+}
+
+/* Secondary Button Elegant Hover */
+.btn-secondary {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  background: linear-gradient(135deg, transparent 0%, rgba(246, 213, 92, 0.1) 100%);
+}
+
+.btn-secondary:hover {
+  background: linear-gradient(135deg, rgba(246, 213, 92, 0.1) 0%, #f6d55c 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(246, 213, 92, 0.25);
+}
+
+/* Ghost Button Sophisticated Hover */
+.btn-ghost {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.btn-ghost::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 100%;
+  background: linear-gradient(135deg, #f6d55c, #e6c53f);
+  transition: width 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  z-index: -1;
+  border-radius: inherit;
+}
+
+.btn-ghost:hover::after {
+  width: 100%;
+}
+
+.btn-ghost:hover {
+  color: #1a1a1a;
+  border-color: #e6c53f;
+  transform: translateY(-1px);
+}
+
+/* ========== STATUS BADGE ANIMATIONS ========== */
+
+/* Pulse effect for active status badges */
+.status-badge {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  overflow: hidden;
+}
+
+.status-badge::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.status-badge:hover::before {
+  width: 100%;
+  height: 100%;
+}
+
+.status-badge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Specific status animations */
+.status-created {
+  position: relative;
+}
+
+.status-created:hover {
+  background: linear-gradient(135deg, #4299e1, #3182ce);
+}
+
+.status-confirmed {
+  position: relative;
+  animation: confirmedPulse 2s infinite;
+}
+
+@keyframes confirmedPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(237, 137, 54, 0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(237, 137, 54, 0); }
+}
+
+.status-confirmed:hover {
+  background: linear-gradient(135deg, #ed8936, #dd6b20);
+  animation: none;
+}
+
+.status-delivered {
+  position: relative;
+}
+
+.status-delivered:hover {
+  background: linear-gradient(135deg, #48bb78, #38a169);
+}
+
+.status-delivered::after {
+  content: '✓';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.status-delivered:hover::after {
+  opacity: 1;
+}
+
+.status-cancelled:hover {
+  background: linear-gradient(135deg, #f56565, #e53e3e);
+}
+
+/* ========== FORM FIELD FOCUS STATES ========== */
+
+/* Luxury form input focus animation */
+.form-input {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  border: 2px solid #e2e8f0;
+}
+
+.form-input:focus {
+  border-color: #f6d55c;
+  box-shadow:
+          0 0 0 3px rgba(246, 213, 92, 0.1),
+          0 4px 12px rgba(246, 213, 92, 0.15);
+  transform: translateY(-1px);
+}
+
+.form-input:focus + .form-label::after {
+  width: 100%;
+}
+
+/* Animated label underline */
+.form-label {
+  position: relative;
+}
+
+.form-label::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #f6d55c, #e6c53f);
+  transition: width 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Search input special effect */
+.search-input {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.search-input:focus {
+  background: linear-gradient(135deg, #ffffff 0%, rgba(246, 213, 92, 0.05) 100%);
+  box-shadow:
+          0 0 0 3px rgba(246, 213, 92, 0.1),
+          0 6px 20px rgba(246, 213, 92, 0.1);
+}
+
+/* ========== TABLE ROW HOVER EFFECTS ========== */
+
+/* Elegant table row hover */
+.table-row-hover {
+  transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+  position: relative;
+}
+
+.table-row-hover::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 4px;
+  height: 0;
+  background: linear-gradient(180deg, #f6d55c, #e6c53f);
+  transition: height 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.table-row-hover:hover::before {
+  height: 100%;
+}
+
+.table-row-hover:hover {
+  background: linear-gradient(90deg, rgba(246, 213, 92, 0.05) 0%, transparent 50%);
+  transform: translateX(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* ========== DROPDOWN & SELECT ANIMATIONS ========== */
+
+/* Dropdown menu elegant appearance */
+.dropdown-animate {
+  animation: dropdownSlide 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  transform-origin: top;
+}
+
+@keyframes dropdownSlide {
+  from {
+    opacity: 0;
+    transform: scaleY(0.8) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1) translateY(0);
+  }
+}
+
+/* Select input luxury styling */
+.select-luxury {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  background: linear-gradient(135deg, #ffffff 0%, rgba(246, 213, 92, 0.02) 100%);
+}
+
+.select-luxury:hover {
+  border-color: #f6d55c;
+  box-shadow: 0 2px 8px rgba(246, 213, 92, 0.1);
+}
+
+.select-luxury:focus {
+  border-color: #f6d55c;
+  box-shadow: 0 0 0 3px rgba(246, 213, 92, 0.1);
+  background: linear-gradient(135deg, #ffffff 0%, rgba(246, 213, 92, 0.05) 100%);
+}
+
+/* ========== PAGINATION BUTTON EFFECTS ========== */
+
+/* Pagination luxury hover */
+.pagination-btn {
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.pagination-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: radial-gradient(circle, rgba(246, 213, 92, 0.3) 0%, transparent 70%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.pagination-btn:hover::before {
+  width: 200%;
+  height: 200%;
+}
+
+.pagination-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(246, 213, 92, 0.2);
+}
+
+.pagination-btn.active {
+  background: linear-gradient(135deg, #f6d55c, #e6c53f);
+  color: #1a1a1a;
+  transform: scale(1.05);
+}
+
+/* ========== LOADING STATES WITH INTERACTION ========== */
+
+/* Interactive loading spinner */
+.loading-spinner {
+  animation: luxurySpin 1.5s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+  background: conic-gradient(from 0deg, #f6d55c, #e6c53f, #f6d55c);
+}
+
+@keyframes luxurySpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Hover pause effect */
+.loading-spinner:hover {
+  animation-play-state: paused;
+}
+
+/* ========== ACCESSIBILITY & REDUCED MOTION ========== */
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary:hover,
+  .btn-secondary:hover,
+  .btn-ghost:hover,
+  .status-badge:hover,
+  .table-row-hover:hover,
+  .pagination-btn:hover {
+    transform: none;
+  }
+
+  .status-confirmed {
+    animation: none;
+  }
+
+  .loading-spinner {
+    animation: none;
+  }
+}

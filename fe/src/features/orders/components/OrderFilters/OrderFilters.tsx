@@ -17,27 +17,6 @@ interface OrdersFiltersProps {
     filteredCount: number;
 }
 
-// Sub-component for search input
-function SearchInput({
-                         searchTerm,
-                         onSearchChange
-                     }: {
-    searchTerm: string;
-    onSearchChange: (value: string) => void;
-}) {
-    return (
-        <div className="flex-1 max-w-md">
-            <input
-                type="text"
-                placeholder="Search by order ID, customer, or description..."
-                className="form-input"
-                value={searchTerm}
-                onChange={(e) => onSearchChange(e.target.value)}
-            />
-        </div>
-    );
-}
-
 // Sub-component for status filter
 function StatusFilter({
                           statusFilter,
@@ -107,13 +86,6 @@ export default function OrdersFilters({
                                           filteredCount
                                       }: OrdersFiltersProps) {
 
-    const handleSearchChange = (searchTerm: string) => {
-        onFilterChange({
-            ...filterState,
-            searchTerm
-        });
-    };
-
     const handleStatusChange = (statusFilter: string) => {
         onFilterChange({
             ...filterState,
@@ -134,10 +106,15 @@ export default function OrdersFilters({
     return (
         <div className="card mb-8">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <SearchInput
-                    searchTerm={filterState.searchTerm}
-                    onSearchChange={handleSearchChange}
-                />
+                <div className="flex-1 max-w-md">
+                    <input
+                        type="text"
+                        placeholder="Search by order ID, customer, or description..."
+                        value={filterState.searchTerm}
+                        onChange={(e) => onFilterChange({ ...filterState, searchTerm: e.target.value })}
+                        className="form-input search-input w-full"
+                    />
+                </div>
 
                 <div className="flex items-center gap-4">
                     <StatusFilter

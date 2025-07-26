@@ -17,7 +17,7 @@ interface OrderDetailsPageProps {
 
 export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
     const router = useRouter();
-    //exclude ORD_ from orderId
+    // Exclude ORD_ from orderId
     orderId = orderId.replace('ORD_', '');
 
     // 🎯 NOW GET LIVE STATUS DATA FROM THE HOOK
@@ -68,16 +68,18 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
     const currentPaymentStatus = livePaymentStatus || payment.status;
 
     return (
-        <div className="min-h-screen bg-[#f7fafc]">
+        <div className="min-h-screen bg-[#f7fafc] page-entrance">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Order Header */}
-                <OrderHeader
-                    order={order}
-                    onBack={() => router.push('/orders')}
-                />
+                <div className="header-stagger-1">
+                    <OrderHeader
+                        order={order}
+                        onBack={() => router.push('/orders')}
+                    />
+                </div>
 
                 {/* Status Timeline - NOW WITH LIVE DATA! */}
-                <div className="mb-8">
+                <div className="mb-8 header-stagger-2">
                     {statusLoading && (
                         <div className="text-sm text-[#718096] mb-2 flex items-center gap-2">
                             <div className="w-3 h-3 border-2 border-[#f6d55c] border-t-transparent rounded-full animate-spin"></div>
@@ -94,16 +96,20 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
 
                 {/* Two-column layout for desktop */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Order Details Card */}
-                    <OrderDetailsCard order={order} />
+                    {/* Order Details Card - slides in from left */}
+                    <div className="card-materialize-left">
+                        <OrderDetailsCard order={order} />
+                    </div>
 
-                    {/* Payment Information Card - Also show live status */}
-                    <PaymentInformationCard
-                        payment={{
-                            ...payment,
-                            status: currentPaymentStatus // Update with live status
-                        }}
-                    />
+                    {/* Payment Information Card - slides in from right */}
+                    <div className="card-materialize-right">
+                        <PaymentInformationCard
+                            payment={{
+                                ...payment,
+                                status: currentPaymentStatus // Update with live status
+                            }}
+                        />
+                    </div>
                 </div>
 
                 {/* Optional: Status Change Indicator */}

@@ -6,23 +6,20 @@ import { ORDER, COLORS } from '@/core/config/constants';
 import {OrdersDashboardDisplay, OrdersTableProps} from '@/features/orders/types/orders.dashboard.types';
 import {useRouter} from "next/navigation";
 
-
-
 // Sub-component for status badge
+
 function StatusBadge({ status }: { status: string }) {
-    const getStatusBadgeClass = (status: string) => {
-        const baseClass = 'status-badge ';
-        switch (status) {
-            case ORDER.STATUS.CREATED: return baseClass + 'status-created';
-            case ORDER.STATUS.CONFIRMED: return baseClass + 'status-confirmed';
-            case ORDER.STATUS.DELIVERED: return baseClass + 'status-delivered';
-            case ORDER.STATUS.CANCELLED: return baseClass + 'status-cancelled';
-            default: return baseClass + 'bg-gray-500 text-white';
-        }
+    const statusClasses: { [key: string]: string } = {
+        [ORDER.STATUS.CREATED]: 'status-created',
+        [ORDER.STATUS.CONFIRMED]: 'status-confirmed',
+        [ORDER.STATUS.DELIVERED]: 'status-delivered',
+        [ORDER.STATUS.CANCELLED]: 'status-cancelled',
     };
 
+    const badgeClass = statusClasses[status] || 'bg-gray-500 text-white';
+
     return (
-        <span className={getStatusBadgeClass(status)}>
+        <span className={`status-badge ${badgeClass}`}>
             {status}
         </span>
     );
@@ -72,10 +69,12 @@ function OrderRow({
 }) {
     return (
         <tr
-            key={order.orderId}
-            className={`hover:bg-gray-50 transition-colors duration-150 ${
-                index % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'
-            }`}
+            className={`
+                table-row-cascade 
+                cascade-delay-${Math.min(index + 1, 8)}
+                table-row-hover
+                ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}
+            `}
         >
             <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex flex-col">
@@ -93,7 +92,7 @@ function OrderRow({
                         {order.userName}
                     </span>
                     {/*<span className="text-xs text-[#718096]">*/}
-                    {/*    {order.userEmail}*/}
+                    {/* {order.userEmail}*/}
                     {/*</span>*/}
                 </div>
             </td>
@@ -296,7 +295,7 @@ export default function OrdersTable({
 
     return (
         <div className="card">
-            <div className="overflow-x-auto">
+            <div>
                 <table className="w-full">
                     <TableHeader />
                     <tbody className="bg-white divide-y divide-gray-200">
