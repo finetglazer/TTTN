@@ -189,6 +189,7 @@ public class Constant {
     public static final Double DECLINE_PROBABILITY = 0.3;
     public static final Double FAILURE_PROBABILITY = 0.1;
     public static final Integer UUID_SUBSTRING_LENGTH = 8;
+    public static final Integer MOCK_PROCESSING_DELAY= 15000;
 
     // ===================== CLEANUP CONFIGURATION =====================
     public static final Integer CLEANUP_HOURS_THRESHOLD = 30;

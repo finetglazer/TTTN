@@ -1,52 +1,46 @@
+// fe/src/features/orders/components/OrderSuccessNotification.tsx
 'use client';
 
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
+import { CheckCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { COLORS, ROUTES } from '@/core/config/constants';
-import { CheckCircle, X } from 'lucide-react';
 
 interface OrderSuccessNotificationProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
-export default function OrderSuccessNotification({
-                                                     isOpen,
-                                                     onClose
-                                                 }: OrderSuccessNotificationProps) {
+export default function OrderSuccessNotification({ isOpen, onClose }: OrderSuccessNotificationProps) {
     const router = useRouter();
 
-    // Handle escape key press to close notification
+    // Close on escape key
     useEffect(() => {
-        if (!isOpen) return;
-
-        const handleEscapeKey = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
                 onClose();
             }
         };
 
-        document.addEventListener('keydown', handleEscapeKey);
-        return () => document.removeEventListener('keydown', handleEscapeKey);
-    }, [isOpen, onClose]);
-
-    // Prevent body scroll when notification is open
-    useEffect(() => {
         if (isOpen) {
+            document.addEventListener('keydown', handleEscape);
+            // Prevent body scroll when modal is open
             document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
         }
 
         return () => {
+            document.removeEventListener('keydown', handleEscape);
             document.body.style.overflow = 'unset';
         };
-    }, [isOpen]);
+    }, [isOpen, onClose]);
 
     const handleGoToDashboard = () => {
         onClose();
-        router.push(ROUTES.DASHBOARD);
+        setTimeout(() => {
+            router.push(ROUTES.DASHBOARD);
+        }, 100);
     };
 
     const handleStayOnPage = () => {
@@ -55,17 +49,18 @@ export default function OrderSuccessNotification({
 
     if (!isOpen) return null;
 
-    return (
+    // Create portal to render modal at document root level
+    return createPortal(
         <>
-            {/* Backdrop overlay */}
+            {/* Full-page backdrop overlay with blur */}
             <div
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300"
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998] transition-opacity duration-300"
                 onClick={onClose}
                 aria-hidden="true"
             />
 
             {/* Notification modal */}
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
                 <div
                     className="relative w-full max-w-md transform transition-all duration-300 animate-fade-in"
                     role="dialog"
@@ -169,6 +164,7 @@ export default function OrderSuccessNotification({
                     </div>
                 </div>
             </div>
-        </>
+        </>,
+        document.body // ← This renders the modal at the root level
     );
 }

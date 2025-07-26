@@ -702,13 +702,6 @@
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f6d55c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
 }
 
-/*.select-luxury:focus {*/
-/*  border-color: #f6d55c;*/
-/*  box-shadow: 0 0 0 3px rgba(246, 213, 92, 0.1);*/
-/*  background: linear-gradient(135deg, #ffffff 0%, rgba(246, 213, 92, 0.05) 100%);*/
-/*  outline: none;*/
-/*  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f6d55c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");*/
-/*}*/
 
 /* Options styling */
 .select-luxury option {

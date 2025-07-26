@@ -138,6 +138,14 @@ public class PaymentTransaction {
         if (result.status.isFailure()) {
             this.failureReason = result.reason;
         }
+
+        //Add 15s delay to simulate processing time
+        try {
+            Thread.sleep(Constant.MOCK_PROCESSING_DELAY);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(Constant.FAILED_TO_PROCESS_PAYMENT, e);
+        }
     }
 
     /**
