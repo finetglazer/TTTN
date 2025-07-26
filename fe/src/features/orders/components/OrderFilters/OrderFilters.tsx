@@ -27,7 +27,7 @@ function StatusFilter({
 }) {
     return (
         <select
-            className="form-input"
+            className="form-input select-luxury"
             value={statusFilter}
             onChange={(e) => onStatusChange(e.target.value)}
         >

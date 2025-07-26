@@ -27,14 +27,14 @@ export function OrderTableActions({ order, onCancel }: OrderTableActionsProps) {
         <div className="flex items-center space-x-2">
             <button
                 onClick={handleViewDetails}
-                className="text-[#f6d55c] hover:text-[#e6c53f] border border-[#f6d55c] hover:border-[#e6c53f] px-3 py-1 rounded text-sm font-medium transition-colors duration-200"
+                className="btn-ghost inline-flex items-center"
             >
                 View Details
             </button>
             {order.orderStatus === ORDER.STATUS.CREATED && (
                 <button
                     onClick={handleCancel}
-                    className="text-red-600 hover:text-red-800 text-sm"
+                    className="btn-secondary text-red-600 border-red-600 hover:bg-red-600 hover:text-white"
                 >
                     Cancel
                 </button>
@@ -74,14 +74,28 @@ export function OrderRowWithNavigation({
                 index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
             }`}
         >
-            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#1a1a1a]">
-                #{order.orderId}
+            {/* Fixed Order column - restore two-line structure */}
+            <td className="px-6 py-4 whitespace-nowrap">
+                <div className="flex flex-col">
+                    <span className="text-sm font-medium text-[#1a1a1a]">
+                        {order.orderId}
+                    </span>
+                    <span className="text-xs text-[#718096] truncate max-w-xs">
+                        {order.orderDescription}
+                    </span>
+                </div>
             </td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm text-[#1a1a1a]">
-                {order.userName}
+            <td className="px-6 py-4 whitespace-nowrap">
+                <div className="flex flex-col">
+                    <span className="text-sm font-medium text-[#2d3748]">
+                        {order.userName}
+                    </span>
+                </div>
             </td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm text-[#1a1a1a]">
-                ${order.totalAmount.toFixed(2)}
+            <td className="px-6 py-4 whitespace-nowrap">
+                <span className="text-sm font-semibold text-[#1a1a1a]">
+                    ${order.totalAmount.toFixed(2)}
+                </span>
             </td>
             <td className="px-6 py-4 whitespace-nowrap">
                 <span className={getStatusBadgeClass(order.orderStatus)}>
@@ -91,7 +105,7 @@ export function OrderRowWithNavigation({
             <td className="px-6 py-4 whitespace-nowrap text-sm text-[#718096]">
                 {new Date(order.createdAt).toLocaleDateString()}
             </td>
-            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+            <td className="px-6 py-4 whitespace-nowrap">
                 <OrderTableActions order={order} />
             </td>
         </tr>

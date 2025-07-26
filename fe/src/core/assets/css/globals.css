@@ -633,34 +633,31 @@
 }
 
 /* ========== TABLE ROW HOVER EFFECTS ========== */
-
-/* Elegant table row hover */
 .table-row-hover {
   transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
   position: relative;
 }
 
-.table-row-hover::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 4px;
-  height: 0;
-  background: linear-gradient(180deg, #f6d55c, #e6c53f);
-  transition: height 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+.table-row-hover:hover {
+  background: linear-gradient(90deg, rgba(246, 213, 92, 0.05) 0%, transparent 50%);
+  box-shadow:
+          inset 4px 0 0 #f6d55c,  /* Left border line */
+          0 2px 8px rgba(0, 0, 0, 0.06);  /* Drop shadow */
 }
 
-.table-row-hover:hover::before {
-  height: 100%;
+/* If you want the animated growing effect, use this instead: */
+.table-row-hover {
+  transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+  position: relative;
+  box-shadow: inset 0 0 0 #f6d55c;  /* Start with no line */
 }
 
 .table-row-hover:hover {
   background: linear-gradient(90deg, rgba(246, 213, 92, 0.05) 0%, transparent 50%);
-  transform: translateX(4px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow:
+          inset 4px 0 0 #f6d55c,  /* Animated to full line */
+          0 2px 8px rgba(0, 0, 0, 0.06);  /* Drop shadow */
 }
-
 /* ========== DROPDOWN & SELECT ANIMATIONS ========== */
 
 /* Dropdown menu elegant appearance */
@@ -681,23 +678,120 @@
 }
 
 /* Select input luxury styling */
+/* Enhanced Select Luxury Styling with Options */
 .select-luxury {
   position: relative;
   transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
-  background: linear-gradient(135deg, #ffffff 0%, rgba(246, 213, 92, 0.02) 100%);
+  /*background: linear-gradient(135deg, #ffffff 0%, rgba(246, 213, 92, 0.02) 100%);*/
+  border: 2px solid #e2e8f0;
+  cursor: pointer;
+  /* Custom dropdown arrow */
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23718096' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
 }
 
 .select-luxury:hover {
   border-color: #f6d55c;
   box-shadow: 0 2px 8px rgba(246, 213, 92, 0.1);
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f6d55c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
 }
 
+/*.select-luxury:focus {*/
+/*  border-color: #f6d55c;*/
+/*  box-shadow: 0 0 0 3px rgba(246, 213, 92, 0.1);*/
+/*  background: linear-gradient(135deg, #ffffff 0%, rgba(246, 213, 92, 0.05) 100%);*/
+/*  outline: none;*/
+/*  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f6d55c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");*/
+/*}*/
+
+/* Options styling */
+.select-luxury option {
+  background-color: #ffffff;
+  color: #2d3748;
+  padding: 12px 16px;
+  font-weight: 500;
+  font-size: 14px;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+/* Option hover and selection states */
+.select-luxury option:hover {
+  background-color: rgba(246, 213, 92, 0.1);
+  color: #1a1a1a;
+}
+
+.select-luxury option:checked,
+.select-luxury option[selected] {
+  background-color: #f6d55c;
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+/* Webkit specific option styling (Chrome, Safari) */
+.select-luxury option:hover {
+  background: linear-gradient(135deg, rgba(246, 213, 92, 0.1) 0%, rgba(246, 213, 92, 0.05) 100%);
+}
+
+/* Firefox specific option styling */
+@-moz-document url-prefix() {
+  .select-luxury option:hover {
+    background-color: rgba(246, 213, 92, 0.1);
+  }
+
+  .select-luxury option:checked {
+    background-color: #f6d55c;
+    color: #1a1a1a;
+  }
+}
+
+/* Custom dropdown animation when opening */
 .select-luxury:focus {
-  border-color: #f6d55c;
-  box-shadow: 0 0 0 3px rgba(246, 213, 92, 0.1);
-  background: linear-gradient(135deg, #ffffff 0%, rgba(246, 213, 92, 0.05) 100%);
+  animation: selectFocusGlow 0.3s ease-out;
 }
 
+@keyframes selectFocusGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(246, 213, 92, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(246, 213, 92, 0.2);
+  }
+  100% {
+    box-shadow: 0 0 0 3px rgba(246, 213, 92, 0.1);
+  }
+}
+
+/* Active state for better UX */
+.select-luxury:active {
+  transform: translateY(1px);
+}
+
+/* Enhanced disabled state */
+.select-luxury:disabled {
+  background-color: #f7fafc;
+  border-color: #e2e8f0;
+  color: #a0aec0;
+  cursor: not-allowed;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a0aec0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+}
+
+.select-luxury:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* For better accessibility */
+.select-luxury:focus-visible {
+  outline: 2px solid #f6d55c;
+  outline-offset: 2px;
+}
 /* ========== PAGINATION BUTTON EFFECTS ========== */
 
 /* Pagination luxury hover */
@@ -774,3 +868,29 @@
     animation: none;
   }
 }
+
+/* Add this to your CSS file or component styles */
+.orders-table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.orders-table th,
+.orders-table td {
+  box-sizing: border-box;
+}
+
+/* Define specific column widths */
+.orders-table th:nth-child(1),
+.orders-table td:nth-child(1) { width: 20%; } /* ORDER */
+.orders-table th:nth-child(2),
+.orders-table td:nth-child(2) { width: 18%; } /* CUSTOMER */
+.orders-table th:nth-child(3),
+.orders-table td:nth-child(3) { width: 12%; } /* AMOUNT */
+.orders-table th:nth-child(4),
+.orders-table td:nth-child(4) { width: 15%; } /* STATUS */
+.orders-table th:nth-child(5),
+.orders-table td:nth-child(5) { width: 15%; } /* DATE */
+.orders-table th:nth-child(6),
+.orders-table td:nth-child(6) { width: 20%; } /* ACTIONS */

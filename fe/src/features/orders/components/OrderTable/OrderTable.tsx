@@ -60,22 +60,9 @@ function OrderRowActions({ order }: { order: OrdersDashboardDisplay }) {
 }
 
 // Sub-component for individual order row
-function OrderRow({
-                      order,
-                      index
-                  }: {
-    order: OrdersDashboardDisplay;
-    index: number;
-}) {
+function OrderRow({ order, index }: { order: OrdersDashboardDisplay; index: number; }) {
     return (
-        <tr
-            className={`
-                table-row-cascade 
-                cascade-delay-${Math.min(index + 1, 8)}
-                table-row-hover
-                ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}
-            `}
-        >
+        <tr className={`table-row-cascade cascade-delay-${Math.min(index + 1, 8)} table-row-hover ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
             <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex flex-col">
                     <span className="text-sm font-medium text-[#1a1a1a]">
@@ -159,7 +146,7 @@ function Pagination({
             <button
                 onClick={() => onPageChange(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
-                className="btn-ghost disabled:opacity-50"
+                className="pagination-btn btn-ghost disabled:opacity-50"
             >
                 Previous
             </button>
@@ -185,8 +172,7 @@ function Pagination({
             <button
                 onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
-                className="btn-ghost disabled:opacity-50"
-            >
+                className="pagination-btn btn-ghost disabled:opacity-50"            >
                 Next
             </button>
         </div>
@@ -224,7 +210,7 @@ function LoadingState() {
     return (
         <div className="card">
             <div className="flex justify-center items-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d69e2e]"></div>
+                <div className="loading-spinner rounded-full h-8 w-8 border-4 border-t-4 border-gray-200"></div>
                 <span className="ml-3 text-[#718096]">Loading orders...</span>
             </div>
         </div>

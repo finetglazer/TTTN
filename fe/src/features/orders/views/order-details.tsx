@@ -81,9 +81,9 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                 {/* Status Timeline - NOW WITH LIVE DATA! */}
                 <div className="mb-8 header-stagger-2">
                     {statusLoading && (
-                        <div className="text-sm text-[#718096] mb-2 flex items-center gap-2">
-                            <div className="w-3 h-3 border-2 border-[#f6d55c] border-t-transparent rounded-full animate-spin"></div>
-                            Checking latest status...
+                        <div className="flex items-center">
+                            <div className="loading-spinner rounded-full h-4 w-4 border-2 border-t-2 border-gray-200 mr-2"></div>
+                            <span className="text-sm text-[#718096]"> Checking latest status... </span>
                         </div>
                     )}
                     <StatusTimeline

@@ -87,8 +87,7 @@ function SubmitSection({
             >
                 {isSubmitting ? (
                     <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                        Creating Order...
+                        <div className="loading-spinner rounded-full h-8 w-8 border-4 border-t-4 border-gray-200"></div>                        Creating Order...
                     </div>
                 ) : (
                     `Create Order`
