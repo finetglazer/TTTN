@@ -1,3 +1,4 @@
+// fe/src/features/payments/validation/paymentDetails.schema.ts
 import {z} from "zod";
 
 const PaymentDetailSchema = z.object({
@@ -7,13 +8,12 @@ const PaymentDetailSchema = z.object({
     transactionReference: z.string(),
     processedAt: z.string(),
     failureReason: z.string().nullable(),
-    // Exclude: authToken (sensitive), sagaId, retryCount, lastRetryAt, externalTransactionId (internal)
 });
 
 const PaymentDetailResponseSchema = z.object({
     status: z.number(),
     msg: z.string(),
-    data: PaymentDetailSchema,
+    data: PaymentDetailSchema.nullable(), // 🎯 Changed: Allow null when payment doesn't exist yet
 });
 
 export {

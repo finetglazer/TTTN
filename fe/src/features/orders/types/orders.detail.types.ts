@@ -16,5 +16,5 @@ export interface OrderDetail {
 
 export interface OrderDetailsData {
     order: OrderDetail;
-    payment: PaymentDetail;
+    payment: PaymentDetail | null;
 }

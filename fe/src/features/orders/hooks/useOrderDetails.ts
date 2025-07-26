@@ -21,19 +21,51 @@ export const useOrderDetails = (orderId: string) => {
         enabled: !!orderId,
     });
 
+    // ✅ FIX 1: Dynamic staleTime and refetch for payment query
     const paymentQuery = useQuery({
         queryKey: paymentsKeys.byOrder(orderId),
         queryFn: () => paymentsApi.getPaymentByOrderId(orderId),
-        staleTime: 10 * 60 * 1000, // 10 minutes
+
+        // 🎯 Dynamic staleTime based on payment existence
+        staleTime: (query) => {
+            // If no payment data exists, keep checking frequently
+            if (!query.state.data) {
+                return 0; // Always fresh when no payment data
+            }
+            return 10 * 60 * 1000; // 10 minutes when payment exists
+        },
+
         gcTime: 60 * 60 * 1000, // 1 hour
         enabled: !!orderId,
+
+        // ✅ FIX 2: Add refetch interval when payment is null (CREATED orders)
+        refetchInterval: (query) => {
+            // If no payment data exists, keep polling every 5 seconds
+            if (!query.state.data) {
+                return 5 * 1000; // 5 seconds
+            }
+            // If payment exists, stop interval polling (rely on status polling)
+            return false;
+        },
+
+        // Don't treat payment not found as error for CREATED orders
+        retry: (failureCount, error) => {
+            // Don't retry if it's a payment not found scenario
+            if (error?.message?.includes('Payment transaction not found')) {
+                return false;
+            }
+            return failureCount < 3;
+        }
     });
 
-    // Status polling hooks - NOW EXPOSE THESE TO THE COMPONENT
+    // ✅ FIX 3: Only poll payment status if payment data exists
     const { data: liveOrderStatus, isLoading: orderStatusLoading } = useOrderStatusPolling(orderId);
-    const { data: livePaymentStatus, isLoading: paymentStatusLoading } = usePaymentStatusPolling(orderId);
+    const { data: livePaymentStatus, isLoading: paymentStatusLoading } = usePaymentStatusPolling(
+        orderId,
+        !!paymentQuery.data // Only poll if payment exists
+    );
 
-    // Invalidate main queries when status changes
+    // ✅ FIX 4: Enhanced invalidation logic
     useEffect(() => {
         if (livePaymentStatus && paymentQuery.data?.status !== livePaymentStatus) {
             console.log(`Payment status changed to: ${livePaymentStatus}`);
@@ -41,22 +73,32 @@ export const useOrderDetails = (orderId: string) => {
         }
     }, [livePaymentStatus, paymentQuery.data?.status, queryClient, orderId]);
 
-    // Combine states for clean interface
-    const isLoading = orderQuery.isLoading || paymentQuery.isLoading;
-    const isError = orderQuery.isError || paymentQuery.isError;
-    const error = orderQuery.error || paymentQuery.error;
+    // ✅ FIX 5: Detect when payment gets created for the first time
+    // useEffect(() => {
+    //     // If we suddenly have payment data when we didn't before, invalidate related queries
+    //     if (paymentQuery.data && !paymentQuery.isPreviousData) {
+    //         console.log('Payment transaction created! Refreshing all related data...');
+    //         queryClient.invalidateQueries({ queryKey: ordersKeys.detail(orderId) });
+    //         queryClient.invalidateQueries({ queryKey: paymentsKeys.status(orderId) });
+    //     }
+    // }, [paymentQuery.data, paymentQuery.isPreviousData, queryClient, orderId]);
 
-    // Combined data
+    // ✅ FIX 6: Only treat as error if order fails, not payment
+    const isLoading = orderQuery.isLoading || paymentQuery.isLoading;
+    const isError = orderQuery.isError; // Only fail if order fails, not payment
+    const error = orderQuery.error;
+
+    // ✅ FIX 7: Combined data - allow null payment for CREATED orders
     const data: OrderDetailsData | undefined =
-        orderQuery.data && paymentQuery.data
+        orderQuery.data
             ? {
                 order: orderQuery.data,
-                payment: paymentQuery.data,
+                payment: paymentQuery.data || null, // Allow null payment
             }
             : undefined;
 
-    // Success state - both queries must succeed
-    const isSuccess = orderQuery.isSuccess && paymentQuery.isSuccess;
+    // Success state - order must succeed, payment is optional
+    const isSuccess = orderQuery.isSuccess;
 
     return {
         data,
@@ -65,13 +107,18 @@ export const useOrderDetails = (orderId: string) => {
         isSuccess,
         error,
 
-        // 🎯 NEW: Expose live polling data
+        // 🎯 Expose live polling data
         liveOrderStatus,      // Live order status from polling
-        livePaymentStatus,    // Live payment status from polling
+        livePaymentStatus,    // Live payment status from polling (only when payment exists)
         statusLoading: orderStatusLoading || paymentStatusLoading,
 
         // Expose individual states if needed
         orderQuery,
         paymentQuery,
+
+        // ✅ Expose payment loading state for UI
+        isPaymentLoading: paymentQuery.isLoading,
+        isPaymentError: paymentQuery.isError,
+        hasPaymentData: !!paymentQuery.data,
     };
 };

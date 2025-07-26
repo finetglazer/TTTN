@@ -28,7 +28,9 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
         error,
         liveOrderStatus,      // Live order status 🔴
         livePaymentStatus,    // Live payment status 🔴
-        statusLoading
+        statusLoading,
+        isPaymentLoading,     // ✅ NEW: Payment-specific loading
+        hasPaymentData        // ✅ NEW: Whether payment data exists
     } = useOrderDetails(orderId);
 
     // Loading state
@@ -36,7 +38,7 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
         return <LoadingSkeleton />;
     }
 
-    // Error state
+    // ✅ FIX: Only show error if ORDER fails, not payment
     if (isError || !data) {
         return (
             <div className="min-h-screen bg-[#f7fafc]">
@@ -65,7 +67,7 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
 
     // 🎯 USE LIVE STATUS WITH FALLBACKS
     const currentOrderStatus = liveOrderStatus || order.status;
-    const currentPaymentStatus = livePaymentStatus || payment.status;
+    const currentPaymentStatus = livePaymentStatus || payment?.status;
 
     return (
         <div className="min-h-screen bg-[#f7fafc] page-entrance">
@@ -81,16 +83,16 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                 {/* Status Timeline - NOW WITH LIVE DATA! */}
                 <div className="mb-8 header-stagger-2">
                     {statusLoading && (
-                        <div className="flex items-center">
-                            <div className="loading-spinner rounded-full h-4 w-4 border-2 border-t-2 border-gray-200 mr-2"></div>
-                            <span className="text-sm text-[#718096]"> Checking latest status... </span>
+                        <div className="text-sm text-[#718096] mb-2 flex items-center gap-2">
+                            <div className="w-3 h-3 border-2 border-[#f6d55c] border-t-transparent rounded-full animate-spin"></div>
+                            Checking latest status...
                         </div>
                     )}
                     <StatusTimeline
                         orderStatus={currentOrderStatus}     // ✅ Live order status
-                        paymentStatus={currentPaymentStatus} // ✅ Live payment status
+                        paymentStatus={currentPaymentStatus} // ✅ Live payment status (may be undefined)
                         createdAt={order.createdAt}
-                        processedAt={payment.processedAt}
+                        processedAt={payment?.processedAt}    // ✅ Safe access with optional chaining
                     />
                 </div>
 
@@ -101,18 +103,20 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                         <OrderDetailsCard order={order} />
                     </div>
 
-                    {/* Payment Information Card - slides in from right */}
+                    {/* ✅ FIX: Payment Information Card - Handle null payment gracefully */}
                     <div className="card-materialize-right">
                         <PaymentInformationCard
-                            payment={{
+                            payment={payment ? {
                                 ...payment,
-                                status: currentPaymentStatus // Update with live status
-                            }}
+                                status: currentPaymentStatus || payment.status // Update with live status if available
+                            } : null}
+                            orderStatus={currentOrderStatus}    // ✅ Pass order status for context
+                            isPaymentLoading={isPaymentLoading} // ✅ Pass payment loading state
                         />
                     </div>
                 </div>
 
-                {/* Optional: Status Change Indicator */}
+                {/* Optional: Status Change Indicators */}
                 {(liveOrderStatus && liveOrderStatus !== order.status) && (
                     <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                         <p className="text-sm text-green-700">
@@ -121,10 +125,19 @@ export default function OrderDetailsPage({ orderId }: OrderDetailsPageProps) {
                     </div>
                 )}
 
-                {(livePaymentStatus && livePaymentStatus !== payment.status) && (
+                {(livePaymentStatus && payment && livePaymentStatus !== payment.status) && (
                     <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                         <p className="text-sm text-blue-700">
                             💳 Payment status updated to: <strong>{livePaymentStatus}</strong>
+                        </p>
+                    </div>
+                )}
+
+                {/* ✅ NEW: Payment Processing Notification for CREATED orders */}
+                {currentOrderStatus === 'CREATED' && !hasPaymentData && (
+                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-sm text-blue-700">
+                            🔄 <strong>Payment Processing:</strong> Your order is being processed. Payment information will appear shortly.
                         </p>
                     </div>
                 )}

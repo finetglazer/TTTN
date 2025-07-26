@@ -1,16 +1,74 @@
 // fe/src/features/orders/components/OrderDetails/PaymentInformationCard.tsx
 'use client';
 
-import { CreditCard, CheckCircle, XCircle, Clock, AlertTriangle, RefreshCw } from 'lucide-react';
+import {CreditCard, CheckCircle, XCircle, Clock, AlertTriangle, RefreshCw, Loader2} from 'lucide-react';
 import { PAYMENT } from '@/core/config/constants';
 import { PaymentDetail } from '@/features/payments/types/payment.detail.types';
 
 interface PaymentInformationCardProps {
-    payment: PaymentDetail;
+    payment: PaymentDetail | null; // ✅ Allow null payment
+    orderStatus?: string; // ✅ Add order status to determine processing state
     onRetryPayment?: () => void;
+    isPaymentLoading?: boolean; // ✅ Add loading state
 }
 
-export function PaymentInformationCard({ payment, onRetryPayment }: PaymentInformationCardProps) {
+
+
+export function PaymentInformationCard({
+                                           payment,
+                                           orderStatus,
+                                           onRetryPayment,
+                                           isPaymentLoading = false
+                                       }: PaymentInformationCardProps) {
+
+    if (!payment || isPaymentLoading) {
+        return (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div className="border-b border-gray-100 p-4">
+                    <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-[#f6d55c]/10 rounded-lg">
+                            <CreditCard className="w-5 h-5 text-[#f6d55c]" />
+                        </div>
+                        <h2 className="text-lg font-semibold text-[#1a1a1a]">Payment Information</h2>
+                    </div>
+                </div>
+
+                <div className="p-6">
+                    {/* 🎯 Payment Processing State */}
+                    <div className="text-center py-8">
+                        <div className="flex items-center justify-center mb-4">
+                            <div className="p-3 bg-blue-50 rounded-full">
+                                <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                            </div>
+                        </div>
+                        <h3 className="text-lg font-medium text-[#1a1a1a] mb-2">
+                            Processing Payment
+                        </h3>
+                        <p className="text-[#718096] mb-4">
+                            Your payment is being processed. This usually takes a few moments.
+                        </p>
+
+                        {/* Processing Status Indicator */}
+                        <div className="flex items-center justify-center space-x-2 text-sm text-[#718096]">
+                            <Clock className="w-4 h-4" />
+                            <span>Payment transaction is being created...</span>
+                        </div>
+
+                        {/* Optional: Order Status Context */}
+                        {orderStatus === 'CREATED' && (
+                            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <p className="text-sm text-yellow-700">
+                                    <strong>Order Status:</strong> Created - Waiting for payment processing
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+
     const getPaymentStatusIcon = (status: string) => {
         switch (status) {
             case PAYMENT.STATUS.CONFIRMED:
@@ -39,6 +97,7 @@ export function PaymentInformationCard({ payment, onRetryPayment }: PaymentInfor
         }
     };
 
+
     const shouldShowRetryButton = () => {
         return payment.status === PAYMENT.STATUS.FAILED || payment.status === PAYMENT.STATUS.DECLINED;
     };
@@ -51,9 +110,8 @@ export function PaymentInformationCard({ payment, onRetryPayment }: PaymentInfor
     };
 
     return (
-        <div className="bg-white rounded-lg shadow-sm">
-            {/* Header */}
-            <div className="border-b border-gray-100 p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="border-b border-gray-100 p-4">
                 <div className="flex items-center space-x-3">
                     <div className="p-2 bg-[#f6d55c]/10 rounded-lg">
                         <CreditCard className="w-5 h-5 text-[#f6d55c]" />

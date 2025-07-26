@@ -6,7 +6,7 @@ import { ORDER, PAYMENT } from '@/core/config/constants';
 
 interface StatusTimelineProps {
     orderStatus: string;
-    paymentStatus: string;
+    paymentStatus: string | undefined;
     createdAt: string;
     processedAt?: string;
 }
