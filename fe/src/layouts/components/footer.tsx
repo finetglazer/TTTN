@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { COLORS, CONTACT, ROUTES } from '@/core/config/constants';
+import { COLORS, CONTACT } from '@/core/config/constants';
 
 export default function Footer() {
     return (

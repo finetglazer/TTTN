@@ -2,7 +2,7 @@
 'use client';
 
 import { useOrderDetails } from '@/features/orders/hooks/useOrderDetails';
-import { useRouter } from 'next/navigation';
+import {useRouter} from "next/navigation";
 import {
     OrderHeader,
     StatusTimeline,
