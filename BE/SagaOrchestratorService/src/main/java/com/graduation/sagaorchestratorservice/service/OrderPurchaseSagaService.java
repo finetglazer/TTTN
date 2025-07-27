@@ -34,6 +34,7 @@ public class OrderPurchaseSagaService {
     private final KafkaMessagePublisher messagePublisher;
     private final IdempotencyService idempotencyService;
     private final SagaMonitoringService monitoringService;
+    private final RedisLockService redisLockService;
 
     @Value("${saga.retry.max-attempts:3}")
     private int maxRetries;
@@ -663,29 +664,50 @@ public class OrderPurchaseSagaService {
         return sagaRepository.findActiveSagas();
     }
 
-    /**
-     * Cancel a saga by user request (if possible)
-     */
     @Transactional
-    public OrderPurchaseSagaState cancelSagaByUser(String sagaId) throws SagaNotFoundException, SagaExecutionException {
-        log.info(Constant.LOG_CANCELLING_SAGA, sagaId);
+    public boolean cancelSagaByUser(String sagaId, String orderId, String reason) {
+        log.info("Processing user cancellation request: sagaId={}, orderId={}, reason={}", sagaId, orderId, reason);
 
-        Optional<OrderPurchaseSagaState> optionalSaga = sagaRepository.findById(sagaId);
-        if (optionalSaga.isEmpty()) {
-            throw new SagaNotFoundException(sagaId);
+        // NEW: Check if payment is currently being processed
+        String paymentLockKey = RedisLockService.buildPaymentLockKey(orderId);
+
+        if (redisLockService.isLocked(paymentLockKey)) {
+            String lockHolder = redisLockService.getLockHolder(paymentLockKey);
+            log.warn("Cannot cancel saga - payment in progress: sagaId={}, orderId={}, lockHolder={}",
+                    sagaId, orderId, lockHolder);
+
+            // Return false to indicate cancellation is blocked
+            return false;
         }
 
-        OrderPurchaseSagaState saga = optionalSaga.get();
+        // PRESERVE EXISTING: Use existing saga-specific lock to prevent race conditions
+        ReentrantLock sagaLock = getSagaLock(sagaId);
+        sagaLock.lock();
+        try {
+            // PRESERVE EXISTING: Find the saga
+            Optional<OrderPurchaseSagaState> optionalSaga = sagaRepository.findById(sagaId);
+            if (optionalSaga.isEmpty()) {
+                log.warn("Saga not found for cancellation: sagaId={}", sagaId);
+                return false;
+            }
 
-        // Check if saga can be cancelled
-        if (!saga.getStatus().isActive()) {
-            throw new SagaExecutionException(sagaId, String.format(Constant.ERROR_CANNOT_CANCEL_SAGA, saga.getStatus()));
+            OrderPurchaseSagaState saga = optionalSaga.get();
+
+            // PRESERVE EXISTING: Validate saga is in active state
+            if (saga.getStatus() == SagaStatus.COMPLETED || saga.getStatus() == SagaStatus.FAILED) {
+                log.warn("Cannot cancel saga in final state: sagaId={}, status={}", sagaId, saga.getStatus());
+                return false;
+            }
+
+            // PRESERVE EXISTING: Proceed with cancellation using existing logic
+            log.info("Payment not in progress, proceeding with saga cancellation: sagaId={}", sagaId);
+
+            // Call existing compensation flow logic
+            startCompensationFlow(saga, reason);
+
+            return true;
+
+        } finally {
+            sagaLock.unlock();
         }
-
-        // Mark as failed and start compensation
-        saga.handleFailure(Constant.REASON_CANCELLED_BY_USER, saga.getCurrentStep().name());
-        startCompensation(saga);
-
-        return saga;
     }
-}

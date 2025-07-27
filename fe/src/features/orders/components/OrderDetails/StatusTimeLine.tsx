@@ -113,9 +113,19 @@ export function StatusTimeline({ orderStatus, paymentStatus, createdAt, processe
         if (stepId === 'created') {
             return new Date(createdAt).toLocaleString();
         }
-        if (stepId === 'confirmed' && processedAt && paymentStatus === PAYMENT.STATUS.CONFIRMED) {
+
+        if (stepId === 'confirmed' && paymentStatus === PAYMENT.STATUS.CONFIRMED && processedAt) {
+            const timeDiff = new Date(processedAt).getTime() - new Date(createdAt).getTime();
+            if (timeDiff < 60000) { // Less than 1 minute
+                return "Shortly after creation";
+            }
             return new Date(processedAt).toLocaleString();
         }
+
+        if (stepId === 'delivered' && orderStatus === ORDER.STATUS.DELIVERED && processedAt) {
+            return new Date(processedAt).toLocaleString();
+        }
+
         return null;
     };
 

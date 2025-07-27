@@ -16,9 +16,10 @@ public class Constant {
 
     // ===================== SUCCESS MESSAGES =====================
     public static final String ORDER_CREATED_SUCCESS = "Order created successfully";
-
+    public static final String ORDER_CANCELLATION_INITIATED = "Order cancellation initiated";
     // ===================== ERROR MESSAGES =====================
     public static final String ORDER_NOT_FOUND = "Order not found";
+    public static final String ACCESS_DENIED = "Access denied";
     public static final String FAILED_TO_CREATE_ORDER = "Failed to create order: ";
     public static final String ERROR_RETRIEVING_ORDER = "Error retrieving order: ";
     public static final String ERROR_RETRIEVING_USER_ORDERS = "Error retrieving user orders: ";
@@ -45,6 +46,8 @@ public class Constant {
     public static final String EVENT_ORDER_STATUS_UPDATE_FAILED = "ORDER_STATUS_UPDATE_FAILED";
     public static final String EVENT_ORDER_CANCELLED = "ORDER_CANCELLED";
     public static final String EVENT_ORDER_CANCELLATION_FAILED = "ORDER_CANCELLATION_FAILED";
+    public static final String EVENT_CANCEL_REQUEST_RECEIVED = "CANCEL_REQUEST_RECEIVED";
+
 
     // ===================== MAP FIELD NAMES =====================
     public static final String FIELD_TYPE = "type";
@@ -126,6 +129,8 @@ public class Constant {
 
     // ===================== KAFKA LISTENER LOG MESSAGES =====================
     public static final String LOG_PROCESSING_ORDER_COMMAND = "Processing order command type: {} for saga: {} messageId: {}";
+    public static final String LOG_PROCESSING_CANCEL_ORDER_COMMAND = "Processing order cancellation command type with orderId: {}";
+
     public static final String LOG_UNKNOWN_ORDER_COMMAND = "Unknown order command type: {} for saga: {}";
     public static final String LOG_ORDER_COMMAND_ACKNOWLEDGED = "Order command acknowledged: {} for saga: {}";
     public static final String LOG_ERROR_PROCESSING_ORDER_COMMAND = "Error processing order command: {}";
@@ -164,9 +169,12 @@ public class Constant {
 
     // ===================== BUSINESS ERROR MESSAGES =====================
     public static final String ERROR_ORDER_NOT_FOUND_ID = "Order not found: %s";
+    public static final String ERROR_AUTHORIZATION = "You are not authorized to cancel this order";
     public static final String ERROR_FAILED_TO_CREATE_ORDER_RUNTIME = "Failed to create order: %s";
+    public static final String ERROR_FAILED_TO_CANCEL_ORDER = "Cancellation not allowed";
     public static final String ERROR_INVALID_ORDER_ID = "Invalid order ID";
-
+    public static final String ERROR_INVALID_ORDER_STATUS_DELIVERED_FOR_CANCELLING = "Cannot cancel order that has already been delivered";
+    public static final String ERROR_INVALID_ORDER_STATUS_BE_ALREADY_CANCELLED_FOR_CANCELLING = "Cannot cancel order that has already been cancelled";
     // ===================== KAFKA TOPICS AND PREFIXES =====================
     public static final String TOPIC_ORDER_EVENTS = "order.events";
     public static final String PREFIX_ORDER_MESSAGE = "ORDER_MSG_";

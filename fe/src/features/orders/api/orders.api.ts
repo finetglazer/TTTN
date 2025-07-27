@@ -40,5 +40,19 @@ export const ordersApi = {
         // Parse and validate response
         const parsedResponse = OrderDetailResponseSchema.parse(response.data);
         return parsedResponse.data;
+    },
+    // Cancel an order by ID
+    cancelOrder: async (orderId: string, reason?: string): Promise<{success: boolean, message: string}> => {
+        const params = new URLSearchParams();
+        if (reason) params.append('reason', reason);
+
+        const queryString = params.toString();
+        const url = `${API.ENDPOINTS.ORDERS.BASE_URL}/${orderId}/cancel${queryString ? '?' + queryString : ''}`;
+
+        const { data } = await axiosClient.post(url);
+        return {
+            success: data.success === 1,
+            message: data.message || 'Order cancellation processed'
+        };
     }
 };

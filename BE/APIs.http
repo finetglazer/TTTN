@@ -27,3 +27,10 @@ GET http://localhost:8080/api/payments/order/1/status
 
 ### 6. Get order status by orderId
 GET http://localhost:8080/api/orders/1/status
+
+### Test successful cancellation
+POST http://localhost:8080/api/orders/123/cancel?reason=Changed mind
+
+### Test unauthorized access
+POST http://localhost:8080/api/orders/123/cancel
+

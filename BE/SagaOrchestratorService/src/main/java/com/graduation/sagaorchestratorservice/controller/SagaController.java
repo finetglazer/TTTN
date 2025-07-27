@@ -158,29 +158,29 @@ public class SagaController {
     /**
      * Cancel saga by user request
      */
-    @PostMapping("/{sagaId}/cancel")
-    public ResponseEntity<Map<String, Object>> cancelSaga(@PathVariable String sagaId) {
-        try {
-            log.info(Constant.LOG_CANCELLING_SAGA, sagaId);
-            OrderPurchaseSagaState cancelledSaga = orderPurchaseSagaService.cancelSagaByUser(sagaId);
-
-            Map<String, Object> response = Map.of(
-                    Constant.RESPONSE_SUCCESS, true,
-                    Constant.RESPONSE_MESSAGE, Constant.SAGA_CANCELLATION_INITIATED,
-                    Constant.RESPONSE_SAGA, createSagaResponse(cancelledSaga)
-            );
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error(Constant.LOG_ERROR_CANCELLING_SAGA, sagaId, e);
-            Map<String, Object> errorResponse = Map.of(
-                    Constant.RESPONSE_SUCCESS, false,
-                    Constant.RESPONSE_MESSAGE, Constant.ERROR_CANCELLING_SAGA + e.getMessage()
-            );
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-        }
-    }
+//    @PostMapping("/{sagaId}/cancel")
+//    public ResponseEntity<Map<String, Object>> cancelSaga(@PathVariable String sagaId) {
+//        try {
+//            log.info(Constant.LOG_CANCELLING_SAGA, sagaId);
+//            OrderPurchaseSagaState cancelledSaga = orderPurchaseSagaService.cancelSagaByUser(sagaId);
+//
+//            Map<String, Object> response = Map.of(
+//                    Constant.RESPONSE_SUCCESS, true,
+//                    Constant.RESPONSE_MESSAGE, Constant.SAGA_CANCELLATION_INITIATED,
+//                    Constant.RESPONSE_SAGA, createSagaResponse(cancelledSaga)
+//            );
+//
+//            return ResponseEntity.ok(response);
+//
+//        } catch (Exception e) {
+//            log.error(Constant.LOG_ERROR_CANCELLING_SAGA, sagaId, e);
+//            Map<String, Object> errorResponse = Map.of(
+//                    Constant.RESPONSE_SUCCESS, false,
+//                    Constant.RESPONSE_MESSAGE, Constant.ERROR_CANCELLING_SAGA + e.getMessage()
+//            );
+//            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+//        }
+//    }
 
     /**
      * Get saga monitoring health status

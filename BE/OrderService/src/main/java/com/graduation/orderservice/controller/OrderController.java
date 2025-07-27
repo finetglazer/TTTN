@@ -2,6 +2,7 @@ package com.graduation.orderservice.controller;
 
 import com.graduation.orderservice.constant.Constant;
 import com.graduation.orderservice.model.Order;
+import com.graduation.orderservice.model.OrderStatus;
 import com.graduation.orderservice.payload.request.CreateOrderRequest;
 import com.graduation.orderservice.payload.response.BaseResponse;
 import com.graduation.orderservice.payload.response.OrderStatusResponse;
@@ -118,6 +119,66 @@ public class OrderController {
 
         } catch (Exception e) {
             return ResponseEntity.ok(new BaseResponse<>(0,Constant.ERROR_RETRIEVING_ORDER_STATUS + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR));
+        }
+    }
+
+    /**
+     * Cancel an order
+     * This will validate authorization and trigger cancellation saga
+     */
+    @PostMapping("/{orderId}/cancel")
+    public ResponseEntity<?> cancelOrder(@PathVariable Long orderId,
+                                         @RequestParam(required = false) String reason) {
+        try {
+            log.info(Constant.LOG_PROCESSING_CANCEL_ORDER_COMMAND, orderId);
+
+            if (orderId == null || orderId <= 0) {
+                return ResponseEntity.ok(new BaseResponse<>(0,
+                        "Invalid order ID", "Order ID must be a positive number"));
+            }
+
+            // Find the order
+            Optional<Order> optionalOrder = orderRepository.findById(orderId);
+            if (optionalOrder.isEmpty()) {
+                return ResponseEntity.ok(new BaseResponse<>(0,
+                        Constant.ORDER_NOT_FOUND,
+                        String.format(Constant.ERROR_ORDER_NOT_FOUND_ID, orderId)));
+            }
+
+            Order order = optionalOrder.get();
+
+            // Check order status eligibility (CREATED or CONFIRMED only)
+            if (!order.getStatus().canBeCancelled()) {
+                String statusMessage = order.getStatus() == OrderStatus.DELIVERED
+                        ? Constant.ERROR_INVALID_ORDER_STATUS_DELIVERED_FOR_CANCELLING
+                        : Constant.ERROR_INVALID_ORDER_STATUS_BE_ALREADY_CANCELLED_FOR_CANCELLING;
+
+                return ResponseEntity.ok(new BaseResponse<>(0,
+                        Constant.ERROR_FAILED_TO_CANCEL_ORDER,
+                        statusMessage));
+            }
+
+            // Initiate cancellation via saga
+            String cancelReason = reason != null ? reason : "User cancellation request";
+            orderCommandHandlerService.initiateCancellation(order, cancelReason);
+
+            log.info("Cancellation initiated successfully: orderId={}", orderId);
+
+            // Return success response to frontend with "cancellation initiated" message
+            Map<String, Object> responseData = Map.of(
+                    Constant.FIELD_ORDER_ID, orderId,
+                    Constant.FIELD_ORDER_STATUS, "cancellation_initiated"
+            );
+
+            return ResponseEntity.ok(new BaseResponse<>(1,
+                    Constant.ORDER_CANCELLATION_INITIATED,
+                    responseData));
+
+        } catch (Exception e) {
+            log.error("Error processing cancellation request for order: {}", orderId, e);
+            return ResponseEntity.ok(new BaseResponse<>(0,
+                    "Failed to initiate cancellation",
+                    "Technical error occurred"));
         }
     }
 

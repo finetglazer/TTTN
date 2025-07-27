@@ -283,6 +283,58 @@ public class OrderCommandHandlerService {
     }
 
     /**
+     * Initiate order cancellation by publishing cancel request event to Saga
+     */
+    @Transactional
+    public void initiateCancellation(Order order, String reason) {
+        try {
+            log.info("Initiating cancellation for order: {}", order.getId());
+
+            // Publish "CancelRequestReceived" event to Saga
+            publishCancelRequestEvent(order, reason);
+
+            log.info("Cancel request event published for order: {}", order.getId());
+
+        } catch (Exception e) {
+            log.error("Failed to initiate cancellation for order: {}", order.getId(), e);
+            throw new RuntimeException("Failed to initiate order cancellation: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Publish cancel request event to trigger saga cancellation flow
+     */
+    private void publishCancelRequestEvent(Order order, String reason) {
+        try {
+            // Create cancel request event payload
+            Map<String, Object> event = new HashMap<>();
+            event.put(Constant.FIELD_MESSAGE_ID, generateMessageId());
+            event.put(Constant.FIELD_TYPE, Constant.EVENT_CANCEL_REQUEST_RECEIVED);
+            event.put(Constant.FIELD_TIMESTAMP, System.currentTimeMillis());
+
+            // Order data for saga
+            event.put(Constant.FIELD_ORDER_ID, order.getId());
+            event.put(Constant.FIELD_USER_ID, order.getUserId());
+            event.put(Constant.FIELD_SAGA_ID, order.getSagaId());
+            event.put(Constant.FIELD_ORDER_STATUS, order.getStatus().name());
+            event.put(Constant.FIELD_REASON, reason);
+            event.put(Constant.FIELD_USER_EMAIL, order.getUserEmail());
+            event.put(Constant.FIELD_USER_NAME, order.getUserName());
+            event.put(Constant.FIELD_TOTAL_AMOUNT, order.getTotalAmount());
+
+            // Publish to saga events topic
+            kafkaTemplate.send(Constant.TOPIC_ORDER_EVENTS, order.getId().toString(), event);
+
+            log.info("Published cancel request event for order: {} with saga: {}",
+                    order.getId(), order.getSagaId());
+
+        } catch (Exception e) {
+            log.error("Failed to publish cancel request event for order: {}", order.getId(), e);
+            throw new RuntimeException("Failed to publish cancel request event", e);
+        }
+    }
+
+    /**
      * Publish order event back to saga orchestrator
      */
     private void publishOrderEvent(String sagaId, Long orderId, String eventType,
