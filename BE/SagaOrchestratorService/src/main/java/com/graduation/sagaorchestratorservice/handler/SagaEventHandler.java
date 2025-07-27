@@ -33,9 +33,9 @@ public class SagaEventHandler {
             case Constant.EVENT_SAGA_MONITORING_UPDATE:
                 handleSagaMonitoringUpdate(event);
                 break;
-            case Constant.EVENT_SAGA_EXTERNAL_CANCEL_REQUEST:
-                handleExternalCancelRequest(event);
-                break;
+//            case Constant.EVENT_SAGA_EXTERNAL_CANCEL_REQUEST:
+//                handleExternalCancelRequest(event);
+//                break;
             default:
                 log.debug(Constant.LOG_UNHANDLED_SAGA_EVENT, eventType, sagaId);
                 break;
@@ -74,22 +74,22 @@ public class SagaEventHandler {
     /**
      * Handle external cancel request
      */
-    private void handleExternalCancelRequest(Map<String, Object> event) {
-        String sagaId = (String) event.get(Constant.FIELD_SAGA_ID);
-        String requestedBy = (String) event.get(Constant.FIELD_REQUESTED_BY);
-        String reason = (String) event.get(Constant.FIELD_REASON);
-
-        log.info("Handling external cancel request for saga: {} by: {} reason: {}",
-                sagaId, requestedBy, reason);
-
-        try {
-            // Delegate to saga service for cancellation
-            orderPurchaseSagaService.cancelSagaByUser(sagaId);
-
-        } catch (Exception e) {
-            log.error("Error handling external cancel request for saga: {}", sagaId, e);
-        }
-    }
+//    private void handleExternalCancelRequest(Map<String, Object> event) {
+//        String sagaId = (String) event.get(Constant.FIELD_SAGA_ID);
+//        String requestedBy = (String) event.get(Constant.FIELD_REQUESTED_BY);
+//        String reason = (String) event.get(Constant.FIELD_REASON);
+//
+//        log.info("Handling external cancel request for saga: {} by: {} reason: {}",
+//                sagaId, requestedBy, reason);
+//
+//        try {
+//            // Delegate to saga service for cancellation
+//            orderPurchaseSagaService.cancelSagaByUser(sagaId);
+//
+//        } catch (Exception e) {
+//            log.error("Error handling external cancel request for saga: {}", sagaId, e);
+//        }
+//    }
 
     /**
      * Handle DLQ messages for debugging and recovery

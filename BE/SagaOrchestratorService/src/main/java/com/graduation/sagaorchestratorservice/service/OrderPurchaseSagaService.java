@@ -664,11 +664,15 @@ public class OrderPurchaseSagaService {
         return sagaRepository.findActiveSagas();
     }
 
+    /**
+     * Cancel saga by user request with Redis lock checking
+     * Uses existing compensation strategy and infrastructure
+     */
     @Transactional
     public boolean cancelSagaByUser(String sagaId, String orderId, String reason) {
         log.info("Processing user cancellation request: sagaId={}, orderId={}, reason={}", sagaId, orderId, reason);
 
-        // NEW: Check if payment is currently being processed
+        // Step 1: Check if payment is currently being processed (Redis lock check)
         String paymentLockKey = RedisLockService.buildPaymentLockKey(orderId);
 
         if (redisLockService.isLocked(paymentLockKey)) {
@@ -676,15 +680,16 @@ public class OrderPurchaseSagaService {
             log.warn("Cannot cancel saga - payment in progress: sagaId={}, orderId={}, lockHolder={}",
                     sagaId, orderId, lockHolder);
 
-            // Return false to indicate cancellation is blocked
+            // Publish cancellation blocked event
+            publishCancellationBlockedEvent(sagaId, orderId, lockHolder);
             return false;
         }
 
-        // PRESERVE EXISTING: Use existing saga-specific lock to prevent race conditions
+        // Step 2: Use existing ReentrantLock for saga-specific thread safety
         ReentrantLock sagaLock = getSagaLock(sagaId);
         sagaLock.lock();
         try {
-            // PRESERVE EXISTING: Find the saga
+            // Step 3: Validate saga is in active state and proceed
             Optional<OrderPurchaseSagaState> optionalSaga = sagaRepository.findById(sagaId);
             if (optionalSaga.isEmpty()) {
                 log.warn("Saga not found for cancellation: sagaId={}", sagaId);
@@ -693,21 +698,77 @@ public class OrderPurchaseSagaService {
 
             OrderPurchaseSagaState saga = optionalSaga.get();
 
-            // PRESERVE EXISTING: Validate saga is in active state
+            // Validate saga is in active state
             if (saga.getStatus() == SagaStatus.COMPLETED || saga.getStatus() == SagaStatus.FAILED) {
                 log.warn("Cannot cancel saga in final state: sagaId={}, status={}", sagaId, saga.getStatus());
                 return false;
             }
 
-            // PRESERVE EXISTING: Proceed with cancellation using existing logic
             log.info("Payment not in progress, proceeding with saga cancellation: sagaId={}", sagaId);
 
-            // Call existing compensation flow logic
-            startCompensationFlow(saga, reason);
+            // Step 4: Set failure reason for user cancellation
+            saga.setFailureReason("User cancellation: " + reason);
+            saga.addEvent(SagaEvent.of("USER_CANCELLATION_REQUESTED",
+                    "User requested cancellation: " + reason));
 
+            // Step 5: Use existing compensation strategy and infrastructure
+            // Your existing startCompensation() method will:
+            // - Determine compensation strategy based on completed steps
+            // - Execute compensation steps in reverse order (payment → order)
+            // - Use existing processNextStep() for step execution
+            startCompensation(saga);
+
+            // Publish cancellation initiated event
+            publishCancellationInitiatedEvent(sagaId, orderId, reason);
+
+            log.info("User cancellation initiated successfully: sagaId={}, orderId={}", sagaId, orderId);
             return true;
 
+        } catch (Exception e) {
+            log.error("Error during saga cancellation: sagaId={}, orderId={}", sagaId, orderId, e);
+            return false;
         } finally {
             sagaLock.unlock();
         }
     }
+
+    /**
+     * Publish cancellation blocked event
+     */
+    private void publishCancellationBlockedEvent(String sagaId, String orderId, String lockHolder) {
+        Map<String, Object> event = new HashMap<>();
+        event.put(Constant.FIELD_SAGA_ID, sagaId);
+        event.put(Constant.FIELD_ORDER_ID, orderId);
+        event.put(Constant.FIELD_TYPE, Constant.EVENT_CANCELLATION_BLOCKED);
+        event.put(Constant.FIELD_MESSAGE_ID, UUID.randomUUID().toString());
+        event.put(Constant.FIELD_TIMESTAMP, System.currentTimeMillis());
+        event.put(Constant.FIELD_REASON, "Payment processing in progress. Lock held by: " + lockHolder);
+
+        try {
+            messagePublisher.publishSagaEvent(sagaId, event);
+            log.info("Published cancellation blocked event for saga: {}", sagaId);
+        } catch (Exception e) {
+            log.error("Failed to publish cancellation blocked event for saga: {}", sagaId, e);
+        }
+    }
+
+    /**
+     * Publish cancellation initiated event
+     */
+    private void publishCancellationInitiatedEvent(String sagaId, String orderId, String reason) {
+        Map<String, Object> event = new HashMap<>();
+        event.put(Constant.FIELD_SAGA_ID, sagaId);
+        event.put(Constant.FIELD_ORDER_ID, orderId);
+        event.put(Constant.FIELD_TYPE, Constant.EVENT_CANCELLATION_INITIATED);
+        event.put(Constant.FIELD_MESSAGE_ID, UUID.randomUUID().toString());
+        event.put(Constant.FIELD_TIMESTAMP, System.currentTimeMillis());
+        event.put(Constant.FIELD_REASON, reason);
+
+        try {
+            messagePublisher.publishSagaEvent(sagaId, event);
+            log.info("Published cancellation initiated event for saga: {}", sagaId);
+        } catch (Exception e) {
+            log.error("Failed to publish cancellation initiated event for saga: {}", sagaId, e);
+        }
+    }
+}

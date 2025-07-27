@@ -65,6 +65,9 @@ public class Constant {
     public static final String EVENT_ORDER_STATUS_UPDATE_FAILED = "ORDER_STATUS_UPDATE_FAILED";
     public static final String EVENT_ORDER_CANCELLED = "ORDER_CANCELLED";
     public static final String EVENT_ORDER_CANCELLATION_FAILED = "ORDER_CANCELLATION_FAILED";
+    public static final String EVENT_CANCEL_REQUEST_RECEIVED = "CANCEL_REQUEST_RECEIVED";
+    public static final String EVENT_CANCELLATION_BLOCKED = "CANCELLATION_BLOCKED";
+    public static final String EVENT_CANCELLATION_INITIATED = "CANCELLATION_INITIATED";
 
     // Payment Events
     public static final String EVENT_PAYMENT_PROCESSED = "PAYMENT_PROCESSED";
@@ -76,6 +79,8 @@ public class Constant {
     public static final String EVENT_SAGA_TIMEOUT_CHECK = "SAGA_TIMEOUT_CHECK";
     public static final String EVENT_SAGA_MONITORING_UPDATE = "SAGA_MONITORING_UPDATE";
     public static final String EVENT_SAGA_EXTERNAL_CANCEL_REQUEST = "SAGA_EXTERNAL_CANCEL_REQUEST";
+
+
 
     // ===================== SAGA EVENT TYPES =====================
     public static final String SAGA_EVENT_INITIATED = "SAGA_INITIATED";
@@ -119,6 +124,9 @@ public class Constant {
     public static final String FIELD_CANCELLED_BY = "cancelledBy";
     public static final String FIELD_REQUESTED_BY = "requestedBy";
     public static final String FIELD_UPDATE_TYPE = "updateType";
+    public static final String FIELD_CANCELLATION_REASON = "cancellationReason";
+    public static final String FIELD_CURRENT_STEP = "currentStep";
+    public static final String FIELD_COMPENSATION_STRATEGY = "compensationStrategy";
 
     // ===================== MESSAGE TYPES =====================
     public static final String MESSAGE_TYPE_COMMAND = "COMMAND";
@@ -346,6 +354,15 @@ public class Constant {
     public static final String LOG_FAILED_PUBLISH_BATCH = "Failed to publish message in batch: {}";
     public static final String LOG_PUBLISHING_TO_DLQ = "Publishing message to DLQ: topic={}, reason={}";
     public static final String LOG_KAFKA_HEALTH_CHECK_FAILED = "Kafka health check failed";
+
+    // Log cancel messages
+    public static final String LOG_CANCEL_REQUEST_RECEIVED = "Cancel request received for saga: {}, orderId: {}, reason: {}";
+    public static final String LOG_CANCELLATION_BLOCKED_PAYMENT = "Cancellation blocked - payment in progress: sagaId={}, orderId={}, lockHolder={}";
+    public static final String LOG_CANCELLATION_PROCEEDING = "Payment not in progress, proceeding with cancellation: sagaId={}, orderId={}";
+    public static final String LOG_COMPENSATION_STRATEGY_DETERMINED = "Compensation strategy determined for saga: {}, currentStep: {}, strategy: {}";
+    public static final String LOG_EXECUTING_COMPENSATION_STEP = "Executing compensation step: {} for saga: {}";
+    public static final String LOG_COMPENSATION_COMPLETED = "Compensation completed for saga: {}";
+    public static final String LOG_COMPENSATION_FAILED = "Compensation failed for saga: {}, error: {}";
 
     // ===================== BUSINESS ERROR MESSAGES =====================
     public static final String ERROR_SAGA_NOT_FOUND = "Saga not found: %s";

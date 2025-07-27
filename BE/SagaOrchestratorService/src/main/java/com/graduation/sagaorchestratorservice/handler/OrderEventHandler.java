@@ -28,7 +28,10 @@ public class OrderEventHandler {
 
         if (eventType.equals(Constant.EVENT_ORDER_CREATED)) {
             handleOrderCreatedEvent(event);
-        } else {
+        } else if (eventType.equals(Constant.EVENT_CANCEL_REQUEST_RECEIVED)) {
+            handleCancelRequestReceived(event);
+        }
+        else {
             orderPurchaseSagaService.handleEventMessage(event);
         }
     }
@@ -55,6 +58,29 @@ public class OrderEventHandler {
         } catch (Exception e) {
             log.error(Constant.ERROR_HANDLING_ORDER_CREATED, e);
             throw new RuntimeException(Constant.ERROR_FAILED_TO_START_SAGA, e);
+        }
+    }
+
+    /**
+     * Handle cancel request received from Order Service
+     */
+    private void handleCancelRequestReceived(Map<String, Object> event) {
+        String sagaId = (String) event.get(Constant.FIELD_SAGA_ID);
+        String orderId = (String) event.get(Constant.FIELD_ORDER_ID);
+        String reason = (String) event.get(Constant.FIELD_REASON);
+
+        log.info(Constant.LOG_CANCEL_REQUEST_RECEIVED, sagaId, orderId, reason);
+
+        try {
+            // Delegate to saga service for cancellation with lock checking
+            boolean cancelled = orderPurchaseSagaService.cancelSagaByUser(sagaId, orderId, reason);
+
+            if (!cancelled) {
+                log.warn("Saga cancellation was blocked or failed: sagaId={}, orderId={}", sagaId, orderId);
+            }
+
+        } catch (Exception e) {
+            log.error("Error handling cancel request for saga: {}, orderId: {}", sagaId, orderId, e);
         }
     }
 }
