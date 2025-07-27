@@ -1,7 +1,7 @@
 // fe/src/features/orders/components/OrderDetails/StatusTimeline.tsx
 'use client';
 
-import { Check, Clock, Package, Truck } from 'lucide-react';
+import { Check, Clock, Package } from 'lucide-react';
 import { ORDER, PAYMENT } from '@/core/config/constants';
 
 interface StatusTimelineProps {
@@ -41,8 +41,8 @@ export function StatusTimeline({ orderStatus, paymentStatus, createdAt, processe
     ];
 
     const getStepStatus = (stepId: string) => {
-        const currentOrderIndex = Object.values(ORDER.STATUS).indexOf(orderStatus as any);
-        const stepIndex = steps.findIndex(step => step.id === stepId);
+        // const currentOrderIndex = Object.values(ORDER.STATUS).indexOf(orderStatus as any);
+        // const stepIndex = steps.findIndex(step => step.id === stepId);
 
         if (stepId === 'created') {
             return 'completed';

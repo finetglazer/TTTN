@@ -2,7 +2,6 @@
 'use client';
 
 import { ArrowLeft, X } from 'lucide-react';
-import { ORDER } from '@/core/config/constants';
 import { OrderDetail } from '@/features/orders/types/orders.detail.types';
 
 interface OrderHeaderProps {
