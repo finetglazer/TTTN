@@ -3,22 +3,21 @@ import OrderDetailsPage from '@/features/orders/views/order-details';
 import AppLayout from '@/layouts/app-layout';
 import { QueryProvider } from '@/core/providers/query-provider';
 
+// The type should now reflect that params is a Promise.
+// While updating @types/next should handle this implicitly,
+// being explicit can help clarify the new pattern.
 interface OrderDetailsPageProps {
-    params: {
-        id: string;
-    };
+    params: Promise<{ id: string; }>; // Or simply { params: { id: string } } after deps update
 }
 
-// Making the Page component async to align with modern Next.js patterns for handling props in Server Components.
 export default async function OrderDetailsAppPage({ params }: OrderDetailsPageProps) {
-    // As per Next.js 15+, the params object must be awaited in async Server Components.
-    const resolvedParams = await params;
+    // Await the params promise to get the actual values
+    const { id } = await params;
 
     return (
         <AppLayout>
             <QueryProvider>
-                {/* Pass the resolved id to the orderId prop. */}
-                <OrderDetailsPage orderId={resolvedParams.id} />
+                <OrderDetailsPage orderId={id} />
             </QueryProvider>
         </AppLayout>
     );
@@ -26,11 +25,10 @@ export default async function OrderDetailsAppPage({ params }: OrderDetailsPagePr
 
 // Generate metadata for the page
 export async function generateMetadata({ params }: OrderDetailsPageProps) {
-    // Awaiting params to resolve its properties before use.
-    const resolvedParams = await params;
+    // Await the params promise here as well
+    const { id } = await params;
     return {
-        // Updated to use the resolved id for generating the title and description.
-        title: `Order #${resolvedParams.id} - Order Management Portal`,
-        description: `View details for order #${resolvedParams.id}`,
+        title: `Order #${id} - Order Management Portal`,
+        description: `View details for order #${id}`,
     };
 }
