@@ -302,6 +302,49 @@ public class OrderCommandHandlerService {
     }
 
     /**
+     * Atomically update order status with database-level locking
+     * Prevents race conditions during status transitions
+     */
+    @Transactional
+    public boolean updateOrderStatusAtomically(Long orderId, OrderStatus expectedCurrentStatus,
+                                               OrderStatus newStatus, String reason, String changedBy) {
+        log.info("Attempting atomic status update: orderId={}, from={}, to={}",
+                orderId, expectedCurrentStatus, newStatus);
+
+        try {
+            // Use pessimistic write lock to ensure atomicity
+            Optional<Order> optionalOrder = orderRepository.findByIdForAtomicUpdate(orderId);
+
+            if (optionalOrder.isEmpty()) {
+                log.warn("Order not found for atomic update: orderId={}", orderId);
+                return false;
+            }
+
+            Order order = optionalOrder.get();
+
+            // Compare-and-swap: only update if current status matches expected
+            if (order.getStatus() != expectedCurrentStatus) {
+                log.warn("Atomic update failed - status mismatch: orderId={}, expected={}, actual={}",
+                        orderId, expectedCurrentStatus, order.getStatus());
+                return false;
+            }
+
+            // Perform the atomic update
+            order.updateStatus(newStatus, reason, changedBy);
+            orderRepository.save(order);
+
+            log.info("Atomic status update successful: orderId={}, from={}, to={}",
+                    orderId, expectedCurrentStatus, newStatus);
+            return true;
+
+        } catch (Exception e) {
+            log.error("Error during atomic status update: orderId={}, from={}, to={}",
+                    orderId, expectedCurrentStatus, newStatus, e);
+            return false;
+        }
+    }
+
+    /**
      * Publish cancel request event to trigger saga cancellation flow
      */
     private void publishCancelRequestEvent(Order order, String reason) {

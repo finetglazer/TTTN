@@ -92,6 +92,7 @@ public class Constant {
     public static final String STATUS_DESC_CONFIRMED = "Order has been confirmed";
     public static final String STATUS_DESC_DELIVERED = "Order has been delivered";
     public static final String STATUS_DESC_CANCELLED = "Order has been cancelled";
+    public static final String STATUS_DESC_CANCELLATION_PENDING = "Cancellation in progress";
 
     // ===================== ORDER BUSINESS LOGIC MESSAGES =====================
     public static final String ERROR_INVALID_STATUS_TRANSITION = "Invalid status transition from %s to %s";
@@ -99,6 +100,7 @@ public class Constant {
     public static final String ERROR_CANNOT_CANCEL_STATUS = "Order cannot be cancelled in current status: %s";
     public static final String ERROR_CAN_ONLY_CONFIRM_CREATED = "Order can only be confirmed from CREATED status, current: %s";
     public static final String ERROR_CAN_ONLY_DELIVER_CONFIRMED = "Order can only be delivered from CONFIRMED status, current: %s";
+    public static final String ERROR_INVALID_ORDER_STATUS_CANCELLATION_PENDING = "Order is currently being cancelled";
 
     // ===================== DEFAULT REASONS =====================
     public static final String REASON_ORDER_CONFIRMED = "Order confirmed for processing";

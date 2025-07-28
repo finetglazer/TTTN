@@ -5,6 +5,7 @@ import { ORDER } from '@/core/config/constants';
 const orderStatusSchema = z.enum([
     ORDER.STATUS.CREATED,
     ORDER.STATUS.CONFIRMED,
+    ORDER.STATUS.CANCELLATION_PENDING,
     ORDER.STATUS.DELIVERED,
     ORDER.STATUS.CANCELLED
 ] as const);

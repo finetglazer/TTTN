@@ -143,7 +143,7 @@ public class Order {
      * Business method to cancel the order
      */
     public void cancel(String reason, String cancelledBy) {
-        if (!this.status.canBeCancelled()) {
+        if (this.status.canBeCancelled()) {
             throw new IllegalStateException(String.format(Constant.ERROR_CANNOT_CANCEL_STATUS, this.status));
         }
 

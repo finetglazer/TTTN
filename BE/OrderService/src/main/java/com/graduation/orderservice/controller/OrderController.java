@@ -123,7 +123,7 @@ public class OrderController {
     }
 
     /**
-     * Cancel an order
+     * Cancel an order with atomic status transitions
      * This will validate authorization and trigger cancellation saga
      */
     @PostMapping("/{orderId}/cancel")
@@ -137,7 +137,7 @@ public class OrderController {
                         "Invalid order ID", "Order ID must be a positive number"));
             }
 
-            // Find the order
+            // Find the order (without lock first, for validation)
             Optional<Order> optionalOrder = orderRepository.findById(orderId);
             if (optionalOrder.isEmpty()) {
                 return ResponseEntity.ok(new BaseResponse<>(0,
@@ -146,28 +146,53 @@ public class OrderController {
             }
 
             Order order = optionalOrder.get();
+            OrderStatus currentStatus = order.getStatus();
 
             // Check order status eligibility (CREATED or CONFIRMED only)
-            if (!order.getStatus().canBeCancelled()) {
-                String statusMessage = order.getStatus() == OrderStatus.DELIVERED
-                        ? Constant.ERROR_INVALID_ORDER_STATUS_DELIVERED_FOR_CANCELLING
-                        : Constant.ERROR_INVALID_ORDER_STATUS_BE_ALREADY_CANCELLED_FOR_CANCELLING;
+            if (currentStatus.canBeCancelled()) {
+                String statusMessage;
+                if (currentStatus == OrderStatus.DELIVERED) {
+                    statusMessage = Constant.ERROR_INVALID_ORDER_STATUS_DELIVERED_FOR_CANCELLING;
+                } else if (currentStatus == OrderStatus.CANCELLED) {
+                    statusMessage = Constant.ERROR_INVALID_ORDER_STATUS_BE_ALREADY_CANCELLED_FOR_CANCELLING;
+                } else if (currentStatus == OrderStatus.CANCELLATION_PENDING) {
+                    statusMessage = Constant.ERROR_INVALID_ORDER_STATUS_CANCELLATION_PENDING;
+                } else {
+                    statusMessage = "Order cannot be cancelled in current status: " + currentStatus;
+                }
 
                 return ResponseEntity.ok(new BaseResponse<>(0,
                         Constant.ERROR_FAILED_TO_CANCEL_ORDER,
                         statusMessage));
             }
 
-            // Initiate cancellation via saga
+            // Atomically transition to CANCELLATION_PENDING
             String cancelReason = reason != null ? reason : "User cancellation request";
-            orderCommandHandlerService.initiateCancellation(order, cancelReason);
+            boolean statusUpdated = orderCommandHandlerService.updateOrderStatusAtomically(
+                    orderId,
+                    currentStatus,
+                    OrderStatus.CANCELLATION_PENDING,
+                    "Cancellation initiated: " + cancelReason,
+                    "USER_REQUEST"
+            );
+
+            if (!statusUpdated) {
+                // Status update failed (likely due to concurrent modification)
+                return ResponseEntity.ok(new BaseResponse<>(0,
+                        "Cancellation failed",
+                        "Order status changed while processing cancellation. Please try again."));
+            }
+
+            // Now initiate cancellation via saga (order is safely in CANCELLATION_PENDING)
+            Order updatedOrder = orderRepository.findById(orderId).orElseThrow();
+            orderCommandHandlerService.initiateCancellation(updatedOrder, cancelReason);
 
             log.info("Cancellation initiated successfully: orderId={}", orderId);
 
             // Return success response to frontend with "cancellation initiated" message
             Map<String, Object> responseData = Map.of(
                     Constant.FIELD_ORDER_ID, orderId,
-                    Constant.FIELD_ORDER_STATUS, "cancellation_initiated"
+                    Constant.FIELD_ORDER_STATUS, OrderStatus.CANCELLATION_PENDING.name().toLowerCase()
             );
 
             return ResponseEntity.ok(new BaseResponse<>(1,
@@ -181,7 +206,6 @@ public class OrderController {
                     "Technical error occurred"));
         }
     }
-
     /**
      * Get orders by user ID
      */

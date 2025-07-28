@@ -680,8 +680,6 @@ public class OrderPurchaseSagaService {
             log.warn("Cannot cancel saga - payment in progress: sagaId={}, orderId={}, lockHolder={}",
                     sagaId, orderId, lockHolder);
 
-            // Publish cancellation blocked event
-            publishCancellationBlockedEvent(sagaId, orderId, lockHolder);
             return false;
         }
 
@@ -718,9 +716,6 @@ public class OrderPurchaseSagaService {
             // - Use existing processNextStep() for step execution
             startCompensation(saga);
 
-            // Publish cancellation initiated event
-            publishCancellationInitiatedEvent(sagaId, orderId, reason);
-
             log.info("User cancellation initiated successfully: sagaId={}, orderId={}", sagaId, orderId);
             return true;
 
@@ -729,46 +724,6 @@ public class OrderPurchaseSagaService {
             return false;
         } finally {
             sagaLock.unlock();
-        }
-    }
-
-    /**
-     * Publish cancellation blocked event
-     */
-    private void publishCancellationBlockedEvent(String sagaId, String orderId, String lockHolder) {
-        Map<String, Object> event = new HashMap<>();
-        event.put(Constant.FIELD_SAGA_ID, sagaId);
-        event.put(Constant.FIELD_ORDER_ID, orderId);
-        event.put(Constant.FIELD_TYPE, Constant.EVENT_CANCELLATION_BLOCKED);
-        event.put(Constant.FIELD_MESSAGE_ID, UUID.randomUUID().toString());
-        event.put(Constant.FIELD_TIMESTAMP, System.currentTimeMillis());
-        event.put(Constant.FIELD_REASON, "Payment processing in progress. Lock held by: " + lockHolder);
-
-        try {
-            messagePublisher.publishSagaEvent(sagaId, event);
-            log.info("Published cancellation blocked event for saga: {}", sagaId);
-        } catch (Exception e) {
-            log.error("Failed to publish cancellation blocked event for saga: {}", sagaId, e);
-        }
-    }
-
-    /**
-     * Publish cancellation initiated event
-     */
-    private void publishCancellationInitiatedEvent(String sagaId, String orderId, String reason) {
-        Map<String, Object> event = new HashMap<>();
-        event.put(Constant.FIELD_SAGA_ID, sagaId);
-        event.put(Constant.FIELD_ORDER_ID, orderId);
-        event.put(Constant.FIELD_TYPE, Constant.EVENT_CANCELLATION_INITIATED);
-        event.put(Constant.FIELD_MESSAGE_ID, UUID.randomUUID().toString());
-        event.put(Constant.FIELD_TIMESTAMP, System.currentTimeMillis());
-        event.put(Constant.FIELD_REASON, reason);
-
-        try {
-            messagePublisher.publishSagaEvent(sagaId, event);
-            log.info("Published cancellation initiated event for saga: {}", sagaId);
-        } catch (Exception e) {
-            log.error("Failed to publish cancellation initiated event for saga: {}", sagaId, e);
         }
     }
 }

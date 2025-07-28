@@ -19,6 +19,11 @@ public enum OrderStatus {
     CONFIRMED(Constant.STATUS_DESC_CONFIRMED),
 
     /**
+     * Order cancellation is in progress
+     */
+    CANCELLATION_PENDING(Constant.STATUS_DESC_CANCELLATION_PENDING),
+
+    /**
      * Order has been delivered to the customer
      */
     DELIVERED(Constant.STATUS_DESC_DELIVERED),
@@ -36,9 +41,11 @@ public enum OrderStatus {
 
     /**
      * Check if the status allows for cancellation
+     * Only CREATED and CONFIRMED orders can be cancelled
+     * CANCELLATION_PENDING orders cannot be cancelled again (prevent double-click)
      */
     public boolean canBeCancelled() {
-        return this == CREATED || this == CONFIRMED;
+        return this != CREATED && this != CONFIRMED;
     }
 
     /**
@@ -49,12 +56,20 @@ public enum OrderStatus {
     }
 
     /**
+     * Check if the status is a pending/processing state
+     */
+    public boolean isPendingState() {
+        return this == CANCELLATION_PENDING;
+    }
+
+    /**
      * Get the next possible statuses from current status
      */
     public OrderStatus[] getPossibleNextStatuses() {
         return switch (this) {
-            case CREATED -> new OrderStatus[]{CONFIRMED, CANCELLED};
-            case CONFIRMED -> new OrderStatus[]{DELIVERED, CANCELLED};
+            case CREATED -> new OrderStatus[]{CONFIRMED, CANCELLATION_PENDING};
+            case CONFIRMED -> new OrderStatus[]{DELIVERED, CANCELLATION_PENDING};
+            case CANCELLATION_PENDING -> new OrderStatus[]{CANCELLED}; // Can only go to CANCELLED
             case DELIVERED, CANCELLED -> new OrderStatus[]{}; // Final states
         };
     }
