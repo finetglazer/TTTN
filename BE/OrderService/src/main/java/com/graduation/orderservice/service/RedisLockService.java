@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Redis-based distributed lock service for saga coordination
+ * Enhanced with atomic lock operations and saga-specific locking
  */
 @Slf4j
 @Service
@@ -68,6 +69,19 @@ public class RedisLockService {
             log.error("Error acquiring lock: key={}", lockKey, e);
             return false;
         }
+    }
+
+    /**
+     * Try to acquire a distributed lock (non-blocking)
+     * This is essentially an alias for acquireLock but with clearer semantics for atomic operations
+     * @param lockKey The key to lock
+     * @param ttl Time to live for the lock
+     * @param timeUnit Time unit for TTL
+     * @return true if lock acquired immediately, false otherwise
+     */
+    public boolean tryLock(String lockKey, long ttl, TimeUnit timeUnit) {
+        log.debug("Attempting to acquire lock atomically: key={}", lockKey);
+        return acquireLock(lockKey, ttl, timeUnit);
     }
 
     /**
@@ -195,6 +209,8 @@ public class RedisLockService {
         }
     }
 
+    // ===================== Lock Key Builders =====================
+
     /**
      * Build standard lock key for order payment operations
      */
@@ -208,6 +224,16 @@ public class RedisLockService {
     public static String buildOrderLockKey(String orderId) {
         return "saga:lock:order:" + orderId + ":order";
     }
+
+    /**
+     * Build standard lock key for saga operations
+     * This will be used for distributed saga coordination in Phase 2
+     */
+    public static String buildSagaLockKey(String sagaId) {
+        return "saga:lock:saga:" + sagaId;
+    }
+
+    // ===================== Helper Methods =====================
 
     /**
      * Get current lock value for this instance

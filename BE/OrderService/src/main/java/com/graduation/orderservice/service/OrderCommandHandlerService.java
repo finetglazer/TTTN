@@ -62,7 +62,7 @@ public class OrderCommandHandlerService {
     /**
      * Publish OrderCreated event to trigger saga
      */
-    private void publishOrderCreatedEvent(Order order) {
+    public void publishOrderCreatedEvent(Order order) {
         try {
             // Create event payload
             Map<String, Object> event = new HashMap<>();
