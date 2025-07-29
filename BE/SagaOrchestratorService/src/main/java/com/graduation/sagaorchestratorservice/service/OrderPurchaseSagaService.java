@@ -96,56 +96,56 @@ public class OrderPurchaseSagaService {
         monitoringService.recordSagaStarted(sagaId, "ORDER_PURCHASE");
 
         // Process the first step (PROCESS_PAYMENT)
-        processNextStep(saga);
+        processNextStepWithFencing(saga);
 
         log.info(Constant.LOG_ORDER_PURCHASE_SAGA_STARTED, sagaId);
         return saga;
     }
 
-    /**
-     * Process the next step in the saga
-     */
-    @Transactional
-    public void processNextStep(OrderPurchaseSagaState saga) {
-        log.debug(Constant.LOG_PROCESSING_STEP, saga.getCurrentStep(), saga.getSagaId());
-
-        // Handle completion
-        if (saga.getCurrentStep() == OrderPurchaseSagaStep.COMPLETE_SAGA) {
-            completeSaga(saga);
-            return;
-        }
-
-        try {
-            // Create command message for current step
-            Map<String, Object> command = createCommandForCurrentStep(saga);
-            if (command == null) {
-                log.warn("No command created for step: {} in saga: {}",
-                        saga.getCurrentStep(), saga.getSagaId());
-                return;
-            }
-
-            // Save saga state before sending command
-            sagaRepository.save(saga);
-
-            // Determine target topic and publish command
-            String targetTopic = getTopicForCommand(saga.getCurrentStep().getCommandType());
-
-            messagePublisher.publishSagaStepCommand(
-                    saga.getSagaId(),
-                    saga.getCurrentStep().getStepNumber(),
-                    saga.getCurrentStep().getCommandType().name(),
-                    command,
-                    targetTopic
-            );
-
-            log.info(Constant.LOG_PUBLISHED_COMMAND,
-                    saga.getCurrentStep().getCommandType(), saga.getSagaId(), targetTopic);
-
-        } catch (Exception e) {
-            log.error(Constant.LOG_ERROR_PROCESSING_STEP, saga.getCurrentStep(), saga.getSagaId(), e);
-            handleStepFailure(saga, "Failed to process step: " + e.getMessage());
-        }
-    }
+//    /**
+//     * Process the next step in the saga
+//     */
+//    @Transactional
+//    public void processNextStep(OrderPurchaseSagaState saga) {
+//        log.debug(Constant.LOG_PROCESSING_STEP, saga.getCurrentStep(), saga.getSagaId());
+//
+//        // Handle completion
+//        if (saga.getCurrentStep() == OrderPurchaseSagaStep.COMPLETE_SAGA) {
+//            completeSaga(saga);
+//            return;
+//        }
+//
+//        try {
+//            // Create command message for current step
+//            Map<String, Object> command = createCommandForCurrentStep(saga);
+//            if (command == null) {
+//                log.warn("No command created for step: {} in saga: {}",
+//                        saga.getCurrentStep(), saga.getSagaId());
+//                return;
+//            }
+//
+//            // Save saga state before sending command
+//            sagaRepository.save(saga);
+//
+//            // Determine target topic and publish command
+//            String targetTopic = getTopicForCommand(saga.getCurrentStep().getCommandType());
+//
+//            messagePublisher.publishSagaStepCommand(
+//                    saga.getSagaId(),
+//                    saga.getCurrentStep().getStepNumber(),
+//                    saga.getCurrentStep().getCommandType().name(),
+//                    command,
+//                    targetTopic
+//            );
+//
+//            log.info(Constant.LOG_PUBLISHED_COMMAND,
+//                    saga.getCurrentStep().getCommandType(), saga.getSagaId(), targetTopic);
+//
+//        } catch (Exception e) {
+//            log.error(Constant.LOG_ERROR_PROCESSING_STEP, saga.getCurrentStep(), saga.getSagaId(), e);
+//            handleStepFailure(saga, "Failed to process step: " + e.getMessage());
+//        }
+//    }
 
 
     /**
@@ -313,7 +313,7 @@ public class OrderPurchaseSagaService {
 
         // Process next step if still active
         if (saga.getStatus() == SagaStatus.IN_PROGRESS || saga.getStatus() == SagaStatus.COMPENSATING) {
-            processNextStep(saga);
+            processNextStepWithFencing(saga);
         }
     }
 
@@ -370,7 +370,7 @@ public class OrderPurchaseSagaService {
         sagaRepository.save(saga);
 
         // Process compensation steps
-        processNextStep(saga);
+        processNextStepWithFencing(saga);
     }
 
     /**
@@ -631,7 +631,7 @@ public class OrderPurchaseSagaService {
             sagaRepository.save(saga);
 
             // Retry the current compensation step
-            processNextStep(saga);
+            processNextStepWithFencing(saga);
 
         } else {
             // Mark as compensation failed - manual intervention needed
@@ -964,8 +964,8 @@ public class OrderPurchaseSagaService {
                         log.info("Executing delayed retry for saga {} (attempt {}) with distributed coordination",
                                 currentSaga.getSagaId(), currentSaga.getRetryCount());
 
-                        // PRESERVE EXISTING - Use your proven processNextStep logic
-                        processNextStep(currentSaga);
+                        // PRESERVE EXISTING
+                        processNextStepWithFencing(currentSaga);
                     } else {
                         log.warn("Saga {} state changed during retry delay, skipping retry", sagaId);
                     }
