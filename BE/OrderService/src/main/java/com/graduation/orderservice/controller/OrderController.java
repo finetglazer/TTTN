@@ -173,7 +173,7 @@ public class OrderController {
                     currentStatus,
                     OrderStatus.CANCELLATION_PENDING,
                     "Cancellation initiated: " + cancelReason,
-                    "USER_REQUEST"
+                    "USER_REQUEST", order.getFencingToken()
             );
 
             if (!statusUpdated) {

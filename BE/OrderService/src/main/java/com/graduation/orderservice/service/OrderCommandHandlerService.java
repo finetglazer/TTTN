@@ -1,6 +1,7 @@
 package com.graduation.orderservice.service;
 
 import com.graduation.orderservice.constant.Constant;
+import com.graduation.orderservice.model.FencingLockResult;
 import com.graduation.orderservice.model.Order;
 import com.graduation.orderservice.model.OrderStatus;
 import com.graduation.orderservice.model.ProcessedMessage;
@@ -15,6 +16,7 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Service for Order business logic
@@ -27,6 +29,7 @@ public class OrderCommandHandlerService {
     private final OrderRepository orderRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final IdempotencyService idempotencyService;
+    private final RedisLockService redisLockService;
 
     /**
      * Create a new order and trigger saga
@@ -93,80 +96,151 @@ public class OrderCommandHandlerService {
     }
 
     /**
-     * Update order status (called by saga)
-     * Steps: check processed message -> validate data -> logic solving -> record data
+     * PHASE 3 ENHANCEMENT: Update order status with fencing token validation
+     * Eliminates split-brain scenarios by validating fencing tokens before any operations
+     * Preserves all existing business logic while adding bulletproof distributed safety
      */
     @Transactional
-    public void updateOrderStatus(Long orderId, OrderStatus newStatus, String reason, String sagaId) {
-        log.info(Constant.LOG_UPDATING_ORDER_STATUS, orderId, newStatus, sagaId);
+    public void updateOrderStatus(Long orderId, OrderStatus newStatus, String reason,
+                                             String sagaId, String fencingToken) {
+        log.info("Updating order status with fencing token: orderId={}, status={}, sagaId={}, token={}",
+                orderId, newStatus, sagaId, fencingToken);
 
-        Optional<Order> optionalOrder = orderRepository.findByIdWithHistories(orderId);
-        if (optionalOrder.isEmpty()) {
-            throw new RuntimeException(String.format(Constant.ERROR_ORDER_NOT_FOUND_ID, orderId));
+        // PHASE 3: Acquire distributed lock with fencing token for order updates
+        String lockKey = RedisLockService.buildOrderLockKey(orderId.toString());
+        FencingLockResult lockResult = redisLockService.acquireLockWithFencing(lockKey, 30, TimeUnit.SECONDS);
+
+        if (lockResult.isAcquired() && lockResult.isValid()) {
+            try {
+                // PRESERVE EXISTING - Find order
+                Optional<Order> optionalOrder = orderRepository.findByIdWithHistories(orderId);
+                if (optionalOrder.isEmpty()) {
+                    throw new RuntimeException(String.format(Constant.ERROR_ORDER_NOT_FOUND_ID, orderId));
+                }
+
+                Order order = optionalOrder.get();
+
+                // Update saga ID if provided (preserve existing logic)
+                if (sagaId != null && order.getSagaId() == null) {
+                    order.setSagaId(sagaId);
+                }
+
+                // PHASE 3: Validate fencing token with Redis
+                String resourceTokenKey = RedisLockService.buildOrderResourceTokenKey(orderId.toString());
+                if (!redisLockService.validateFencingToken(resourceTokenKey, fencingToken)) {
+                    log.error("Order status update rejected due to stale fencing token: orderId={}, token={}",
+                            orderId, fencingToken);
+                    throw new RuntimeException("Order update rejected due to stale operation");
+                }
+
+                // PHASE 3: Update status with fencing token validation
+                boolean updateSuccessful = order.updateStatusWithFencing(
+                        newStatus, reason, Constant.ACTOR_SAGA_ORCHESTRATOR, Long.valueOf(fencingToken));
+
+                if (!updateSuccessful) {
+                    log.error("Order status update failed due to fencing token validation: orderId={}, token={}",
+                            orderId, fencingToken);
+                    throw new RuntimeException("Order update failed due to stale fencing token");
+                }
+
+                // PRESERVE EXISTING - Save order
+                orderRepository.save(order);
+                log.info("Order status updated successfully with fencing token: orderId={}, status={}, token={}",
+                        orderId, newStatus, fencingToken);
+
+            } finally {
+                redisLockService.releaseLock(lockKey);
+            }
+        } else {
+            log.error("Failed to acquire order lock for status update: orderId={}", orderId);
+            throw new RuntimeException("Failed to acquire lock for order update");
         }
-
-        Order order = optionalOrder.get();
-
-        // Update saga ID if provided
-        if (sagaId != null && order.getSagaId() == null) {
-            order.setSagaId(sagaId);
-        }
-        // Update status with history
-        order.updateStatus(newStatus, reason, Constant.ACTOR_SAGA_ORCHESTRATOR);
-
-        orderRepository.save(order);
-        log.info(Constant.LOG_ORDER_STATUS_UPDATED, orderId, newStatus);
     }
 
+
     /**
-     * Cancel order (compensation step)
+     * PHASE 3: Cancel order with fencing token validation
+     * Enhanced version of existing cancelOrder method
      */
     @Transactional
-    public void cancelOrder(Long orderId, String reason, String sagaId) {
-        log.info(Constant.LOG_CANCELLING_ORDER, orderId, sagaId);
+    public void cancelOrderWithFencing(Long orderId, String reason, String sagaId, String fencingToken) {
+        log.info("Cancelling order with fencing token: orderId={}, sagaId={}, token={}", orderId, sagaId, fencingToken);
 
-        // Use a custom query to fetch with histories
-        Optional<Order> optionalOrder = orderRepository.findByIdWithHistories(orderId);
-        if (optionalOrder.isEmpty()) {
-            throw new RuntimeException(String.format(Constant.ERROR_ORDER_NOT_FOUND_ID, orderId));
+        // PHASE 3: Acquire distributed lock with fencing token for order cancellation
+        String lockKey = RedisLockService.buildOrderLockKey(orderId.toString());
+        FencingLockResult lockResult = redisLockService.acquireLockWithFencing(lockKey, 30, TimeUnit.SECONDS);
+
+        if (lockResult.isAcquired() && lockResult.isValid()) {
+            try {
+                // PRESERVE EXISTING - Find order
+                Optional<Order> optionalOrder = orderRepository.findByIdWithHistories(orderId);
+                if (optionalOrder.isEmpty()) {
+                    throw new RuntimeException(String.format(Constant.ERROR_ORDER_NOT_FOUND_ID, orderId));
+                }
+
+                Order order = optionalOrder.get();
+
+                // PHASE 3: Validate fencing token with Redis
+                String resourceTokenKey = RedisLockService.buildOrderResourceTokenKey(orderId.toString());
+                if (!redisLockService.validateFencingToken(resourceTokenKey, fencingToken)) {
+                    log.error("Order cancellation rejected due to stale fencing token: orderId={}, token={}",
+                            orderId, fencingToken);
+                    throw new RuntimeException("Order cancellation rejected due to stale operation");
+                }
+
+                // PHASE 3: Cancel order with fencing token validation
+                boolean cancellationSuccessful = order.cancelWithFencing(
+                        reason, Constant.ACTOR_SAGA_COMPENSATION, Long.valueOf(fencingToken));
+
+                if (!cancellationSuccessful) {
+                    log.error("Order cancellation failed due to fencing token validation: orderId={}, token={}",
+                            orderId, fencingToken);
+                    throw new RuntimeException("Order cancellation failed due to stale fencing token");
+                }
+
+                // PRESERVE EXISTING - Save order
+                orderRepository.save(order);
+                log.info("Order cancelled successfully with fencing token: orderId={}, token={}", orderId, fencingToken);
+
+            } finally {
+                redisLockService.releaseLock(lockKey);
+            }
+        } else {
+            log.error("Failed to acquire order lock for cancellation: orderId={}", orderId);
+            throw new RuntimeException("Failed to acquire lock for order cancellation");
         }
-
-        Order order = optionalOrder.get();
-        order.cancel(reason, Constant.ACTOR_SAGA_COMPENSATION);
-
-        orderRepository.save(order);
-        log.info(Constant.LOG_ORDER_CANCELLED_SUCCESS, orderId);
     }
 
-    /**
-     * Handle order update confirmed command
+
+     /**
+     * PHASE 3: Handle order update confirmed command with fencing token
      */
     public void handleUpdateOrderConfirmed(Map<String, Object> command) {
-
         Map<String, Object> payload = (Map<String, Object>) command.get(Constant.FIELD_PAYLOAD);
         String messageId = (String) command.get(Constant.FIELD_MESSAGE_ID);
-
         String sagaId = command.get(Constant.FIELD_SAGA_ID).toString();
-        //idempotency check
+        String fencingToken = (String) command.get("fencingToken"); // PHASE 3: Extract fencing token
+
+        // PRESERVE EXISTING - Idempotency check
         if (idempotencyService.isProcessed(messageId, sagaId)) {
             log.info(Constant.LOG_MESSAGE_ALREADY_PROCESSED, messageId, sagaId);
-            return; // Skip processing if already handled
+            return;
         }
-        String reason = (String) payload.getOrDefault(Constant.FIELD_REASON, Constant.REASON_ORDER_CONFIRMED_SUCCESS);
+
+        String reason = (String) payload.getOrDefault(Constant.FIELD_REASON, Constant.REASON_ORDER_CONFIRMED);
         Long orderId = Long.valueOf(payload.get(Constant.FIELD_ORDER_ID).toString());
 
-        // validate reason and orderId
-        if (validatePayload(sagaId, messageId, orderId, reason)) return;
-
         try {
-            log.info(Constant.LOG_UPDATING_ORDER_CONFIRMED, orderId, sagaId);
-            updateOrderStatus(orderId, OrderStatus.CONFIRMED, reason, sagaId);
-            idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.SUCCESS);
+            // PRESERVE EXISTING - Validate payload
+            if (validatePayload(sagaId, messageId, orderId, reason)) return;
 
-            // Publish success event
+            // PHASE 3: Update order status with fencing token
+            updateOrderStatus(orderId, OrderStatus.CONFIRMED, reason, sagaId, fencingToken);
+
+            // PRESERVE EXISTING - Record success and publish event
+            idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.SUCCESS);
             publishOrderEvent(sagaId, orderId, Constant.EVENT_ORDER_STATUS_UPDATED_CONFIRMED, true,
                     Constant.STATUS_DESC_CONFIRMED, null);
-            //record idempotency
 
         } catch (Exception e) {
             log.error(Constant.LOG_ERROR_UPDATING_CONFIRMED, e.getMessage(), e);
@@ -182,6 +256,8 @@ public class OrderCommandHandlerService {
     public void handleUpdateOrderDelivered(Map<String, Object> command) {
         String sagaId = (String) command.get(Constant.FIELD_SAGA_ID);
         String messageId = (String) command.get(Constant.FIELD_MESSAGE_ID);
+        String fencingToken = (String) command.get("fencingToken"); // PHASE 3: Extract fencing token
+
         // Idempotency check
         if (idempotencyService.isProcessed(messageId, sagaId)) {
             log.info(Constant.LOG_MESSAGE_ALREADY_PROCESSED, messageId, sagaId);
@@ -201,7 +277,7 @@ public class OrderCommandHandlerService {
         try {
 
             // Update order status to DELIVERED
-            updateOrderStatus(orderId, OrderStatus.DELIVERED, reason, sagaId);
+            updateOrderStatus(orderId, OrderStatus.DELIVERED, reason, sagaId, fencingToken);
 
             // Add 10-second delay before sending event to saga
             log.info(Constant.LOG_PROCESSING_DELIVERY_WAIT, sagaId);
@@ -243,33 +319,26 @@ public class OrderCommandHandlerService {
     }
 
     /**
-     * Handle order cancellation command
+     * PHASE 3: Handle order cancellation with fencing token validation
      */
     public void handleCancelOrder(Map<String, Object> command) {
-        //Idempotency check
         String sagaId = (String) command.get(Constant.FIELD_SAGA_ID);
         String messageId = (String) command.get(Constant.FIELD_MESSAGE_ID);
-        if (idempotencyService.isProcessed(messageId, sagaId)) {
-            log.info(Constant.LOG_MESSAGE_ALREADY_PROCESSED, messageId, sagaId);
-            return; // Skip processing if already handled
-        }
-
-        // Extract payload first
+        String fencingToken = (String) command.get("fencingToken"); // PHASE 3: Extract fencing token
         Map<String, Object> payload = (Map<String, Object>) command.get(Constant.FIELD_PAYLOAD);
 
         Long orderId = Long.valueOf(payload.get(Constant.FIELD_ORDER_ID).toString());
         String reason = (String) payload.getOrDefault(Constant.FIELD_REASON, Constant.REASON_ORDER_CANCELLED_SAGA);
 
         try {
-            // Validate orderId and reason
+            // PRESERVE EXISTING - Validate payload
             if (validatePayload(sagaId, messageId, orderId, reason)) return;
-            // Proceed with cancellation
 
-            // TODO: Inject OrderService and call cancelOrder
-            cancelOrder(orderId, reason, sagaId);
+            // PHASE 3: Cancel order with fencing token validation
+            cancelOrderWithFencing(orderId, reason, sagaId, fencingToken);
 
+            // PRESERVE EXISTING - Record success and publish event
             idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.SUCCESS);
-            // Publish success event
             publishOrderEvent(sagaId, orderId, Constant.EVENT_ORDER_CANCELLED, true,
                     Constant.STATUS_DESC_CANCELLED, null);
 
@@ -302,14 +371,127 @@ public class OrderCommandHandlerService {
     }
 
     /**
-     * Atomically update order status with database-level locking
-     * Prevents race conditions during status transitions
+     * PHASE 3: Atomically update order status with fencing token validation
+     * Enhanced version that combines database-level locking with fencing tokens
+     * Uses the existing updateOrderStatusAtomically method for database operations
+     */
+    @Transactional
+    public boolean updateOrderStatusAtomicallyWithFencing(Long orderId, OrderStatus expectedCurrentStatus,
+                                                          OrderStatus newStatus, String reason, String changedBy,
+                                                          String fencingToken) {
+        log.info("Attempting atomic status update with fencing token: orderId={}, from={}, to={}, token={}",
+                orderId, expectedCurrentStatus, newStatus, fencingToken);
+
+        // PHASE 3: Acquire distributed lock with fencing token
+        String lockKey = RedisLockService.buildOrderLockKey(orderId.toString());
+        FencingLockResult lockResult = redisLockService.acquireLockWithFencing(lockKey, 30, TimeUnit.SECONDS);
+
+        if (lockResult.isAcquired() && lockResult.isValid()) {
+            try {
+                // PHASE 3: Validate fencing token with Redis first
+                String resourceTokenKey = RedisLockService.buildOrderResourceTokenKey(orderId.toString());
+                if (!redisLockService.validateFencingToken(resourceTokenKey, fencingToken)) {
+                    log.error("Atomic order update rejected due to stale fencing token: orderId={}, token={}",
+                            orderId, fencingToken);
+                    return false;
+                }
+
+                // PHASE 3: Use the existing atomic update method with fencing token
+                boolean success = updateOrderStatusAtomicallyWithFencingValidation(
+                        orderId, expectedCurrentStatus, newStatus, reason, changedBy, Long.valueOf(fencingToken));
+
+                if (success) {
+                    log.info("Atomic order status update successful with fencing token: orderId={}, token={}",
+                            orderId, fencingToken);
+                } else {
+                    log.warn("Atomic order status update failed - status mismatch or stale token: orderId={}, expected={}, actual=?",
+                            orderId, expectedCurrentStatus);
+                }
+
+                return success;
+
+            } finally {
+                redisLockService.releaseLock(lockKey);
+            }
+        } else {
+            log.error("Failed to acquire order lock for atomic update: orderId={}", orderId);
+            return false;
+        }
+    }
+
+    /**
+     * PHASE 3: Enhanced version of updateOrderStatusAtomically with fencing token validation
+     * Preserves all existing database-level atomic logic while adding fencing token protection
+     */
+    @Transactional
+    public boolean updateOrderStatusAtomicallyWithFencingValidation(Long orderId, OrderStatus expectedCurrentStatus,
+                                                                    OrderStatus newStatus, String reason, String changedBy,
+                                                                    Long fencingToken) {
+        log.info("Attempting atomic status update with fencing validation: orderId={}, from={}, to={}, token={}",
+                orderId, expectedCurrentStatus, newStatus, fencingToken);
+
+        try {
+            // PRESERVE EXISTING - Use pessimistic write lock to ensure atomicity
+            Optional<Order> optionalOrder = orderRepository.findByIdForAtomicUpdate(orderId);
+
+            if (optionalOrder.isEmpty()) {
+                log.warn("Order not found for atomic update: orderId={}", orderId);
+                return false;
+            }
+
+            Order order = optionalOrder.get();
+
+            // PRESERVE EXISTING - Compare-and-swap: only update if current status matches expected
+            if (order.getStatus() != expectedCurrentStatus) {
+                log.warn("Atomic update failed - status mismatch: orderId={}, expected={}, actual={}",
+                        orderId, expectedCurrentStatus, order.getStatus());
+                return false;
+            }
+
+            // PHASE 3: Additional fencing token validation at entity level
+            if (fencingToken != null && !order.isValidFencingToken(fencingToken)) {
+                log.warn("Atomic update failed - stale fencing token: orderId={}, incoming={}, current={}",
+                        orderId, fencingToken, order.getFencingToken());
+                return false;
+            }
+
+            // PHASE 3: Perform the atomic update with fencing token
+            if (fencingToken != null) {
+                // Use fencing-aware update method
+                boolean updateSuccess = order.updateStatusWithFencing(newStatus, reason, changedBy, fencingToken);
+                if (!updateSuccess) {
+                    log.warn("Order status update rejected by entity fencing validation: orderId={}, token={}",
+                            orderId, fencingToken);
+                    return false;
+                }
+            } else {
+                // PRESERVE EXISTING - Fall back to regular update if no fencing token
+                order.updateStatus(newStatus, reason, changedBy);
+            }
+
+            // PRESERVE EXISTING - Save the order
+            orderRepository.save(order);
+
+            log.info("Atomic status update with fencing validation successful: orderId={}, from={}, to={}, token={}",
+                    orderId, expectedCurrentStatus, newStatus, fencingToken);
+            return true;
+
+        } catch (Exception e) {
+            log.error("Error during atomic status update with fencing: orderId={}, from={}, to={}, token={}",
+                    orderId, expectedCurrentStatus, newStatus, fencingToken, e);
+            return false;
+        }
+    }
+
+    /**
+     * PRESERVE EXISTING: Your original updateOrderStatusAtomically method
+     * Enhanced to properly use the fencing token parameter
      */
     @Transactional
     public boolean updateOrderStatusAtomically(Long orderId, OrderStatus expectedCurrentStatus,
-                                               OrderStatus newStatus, String reason, String changedBy) {
-        log.info("Attempting atomic status update: orderId={}, from={}, to={}",
-                orderId, expectedCurrentStatus, newStatus);
+                                               OrderStatus newStatus, String reason, String changedBy, Long fencingToken) {
+        log.info("Attempting atomic status update: orderId={}, from={}, to={}, fencingToken={}",
+                orderId, expectedCurrentStatus, newStatus, fencingToken);
 
         try {
             // Use pessimistic write lock to ensure atomicity
@@ -329,17 +511,36 @@ public class OrderCommandHandlerService {
                 return false;
             }
 
-            // Perform the atomic update
-            order.updateStatus(newStatus, reason, changedBy);
+            // PHASE 3: Add fencing token validation if provided
+            if (fencingToken != null) {
+                // Validate fencing token before proceeding
+                if (!order.isValidFencingToken(fencingToken)) {
+                    log.warn("Atomic update failed - invalid fencing token: orderId={}, incoming={}, current={}",
+                            orderId, fencingToken, order.getFencingToken());
+                    return false;
+                }
+
+                // Use fencing-aware update
+                boolean updateSuccess = order.updateStatusWithFencing(newStatus, reason, changedBy, fencingToken);
+                if (!updateSuccess) {
+                    log.warn("Order status update rejected by fencing validation: orderId={}, token={}",
+                            orderId, fencingToken);
+                    return false;
+                }
+            } else {
+                // Regular update without fencing token
+                order.updateStatus(newStatus, reason, changedBy);
+            }
+
             orderRepository.save(order);
 
-            log.info("Atomic status update successful: orderId={}, from={}, to={}",
-                    orderId, expectedCurrentStatus, newStatus);
+            log.info("Atomic status update successful: orderId={}, from={}, to={}, fencingToken={}",
+                    orderId, expectedCurrentStatus, newStatus, fencingToken);
             return true;
 
         } catch (Exception e) {
-            log.error("Error during atomic status update: orderId={}, from={}, to={}",
-                    orderId, expectedCurrentStatus, newStatus, e);
+            log.error("Error during atomic status update: orderId={}, from={}, to={}, fencingToken={}",
+                    orderId, expectedCurrentStatus, newStatus, fencingToken, e);
             return false;
         }
     }

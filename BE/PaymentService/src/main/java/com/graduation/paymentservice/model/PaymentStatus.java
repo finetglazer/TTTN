@@ -18,14 +18,16 @@ public enum PaymentStatus {
     CONFIRMED("Payment has been confirmed"),
 
     /**
-     * Payment has been declined by the payment processor
+     * Payment has been reversed, typically due to a refund or chargeback
      */
-    DECLINED("Payment has been declined"),
+    REVERSED("Payment has been reversed"),
 
     /**
      * Payment processing failed due to technical issues
      */
     FAILED("Payment processing failed");
+
+
 
     private final String description;
 
@@ -44,7 +46,7 @@ public enum PaymentStatus {
      * Check if the payment status is a failure
      */
     public boolean isFailure() {
-        return this == DECLINED || this == FAILED;
+    return this == REVERSED || this == FAILED;
     }
 
     /**
@@ -58,7 +60,7 @@ public enum PaymentStatus {
      * Check if the payment status is final (no further processing)
      */
     public boolean isFinalStatus() {
-        return this == CONFIRMED || this == DECLINED || this == FAILED;
+        return this == CONFIRMED || this == FAILED || this == REVERSED;
     }
 
     /**
@@ -66,8 +68,9 @@ public enum PaymentStatus {
      */
     public PaymentStatus[] getPossibleNextStatuses() {
         return switch (this) {
-            case PENDING -> new PaymentStatus[]{CONFIRMED, DECLINED, FAILED};
-            case CONFIRMED, DECLINED, FAILED -> new PaymentStatus[]{}; // Final states
+            case PENDING -> new PaymentStatus[]{CONFIRMED, FAILED}; // Pending can lead to any final state
+            case FAILED -> new PaymentStatus[]{REVERSED}; // Failed can be retried
+            case CONFIRMED, REVERSED -> new PaymentStatus[]{}; // Final states
         };
     }
 
@@ -85,7 +88,7 @@ public enum PaymentStatus {
         return switch (this) {
             case PENDING -> 102; // Processing
             case CONFIRMED -> 200; // OK
-            case DECLINED -> 402; // Payment Required (declined)
+            case REVERSED -> 402; // Payment
             case FAILED -> 500; // Internal Server Error
         };
     }

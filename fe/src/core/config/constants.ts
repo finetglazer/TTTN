@@ -70,7 +70,7 @@ export const PAYMENT = {
     PENDING: 'PENDING',
     CONFIRMED: 'CONFIRMED',
     FAILED: 'FAILED',
-    DECLINED: 'DECLINED',
+    REVERSED: 'REVERSED'
   }
 }
 

@@ -73,7 +73,7 @@ public class OrderEventHandler {
 
         try {
             // Delegate to saga service for cancellation with lock checking
-            boolean cancelled = orderPurchaseSagaService.cancelSagaByUser(sagaId, orderId, reason);
+            boolean cancelled = orderPurchaseSagaService.cancelSagaByUserWithFencing(sagaId, orderId, reason);
 
             if (!cancelled) {
                 log.warn("Saga cancellation was blocked or failed: sagaId={}, orderId={}", sagaId, orderId);

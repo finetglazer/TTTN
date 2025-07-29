@@ -1,5 +1,6 @@
 package com.graduation.sagaorchestratorservice.service;
 
+import com.graduation.sagaorchestratorservice.model.FencingLockResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -8,14 +9,15 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Redis-based distributed lock service for saga coordination
- * Enhanced with atomic lock operations and saga-specific locking
+ * PHASE 3: Redis-based distributed lock service with FENCING TOKEN support
+ * Enhanced to provide split-brain protection through monotonically increasing tokens
  */
 @Slf4j
 @Service
@@ -25,7 +27,26 @@ public class RedisLockService {
     private final RedisTemplate<String, String> redisTemplate;
     private final String serviceInstanceId = UUID.randomUUID().toString().substring(0, 8);
 
-    // Lua script for atomic lock release
+    // PHASE 3: Lua script for atomic lock acquisition WITH fencing token generation
+    private static final String ACQUIRE_LOCK_WITH_FENCING_SCRIPT =
+            "local lockKey = KEYS[1]\n" +
+                    "local tokenKey = KEYS[2]\n" +
+                    "local lockValue = ARGV[1]\n" +
+                    "local ttlSeconds = ARGV[2]\n" +
+                    "\n" +
+                    "-- Try to acquire the lock\n" +
+                    "local acquired = redis.call('SET', lockKey, lockValue, 'NX', 'EX', ttlSeconds)\n" +
+                    "if acquired then\n" +
+                    "    -- Generate fencing token (atomic increment)\n" +
+                    "    local fencingToken = redis.call('INCR', tokenKey)\n" +
+                    "    -- Set expiration for token key (longer than lock to prevent reuse)\n" +
+                    "    redis.call('EXPIRE', tokenKey, ttlSeconds * 2)\n" +
+                    "    return {1, fencingToken}\n" +
+                    "else\n" +
+                    "    return {0, nil}\n" +
+                    "end";
+
+    // Existing Lua scripts
     private static final String RELEASE_LOCK_SCRIPT =
             "if redis.call('GET', KEYS[1]) == ARGV[1] then " +
                     "    return redis.call('DEL', KEYS[1]) " +
@@ -33,7 +54,6 @@ public class RedisLockService {
                     "    return 0 " +
                     "end";
 
-    // Lua script for atomic lock extension
     private static final String EXTEND_LOCK_SCRIPT =
             "if redis.call('GET', KEYS[1]) == ARGV[1] then " +
                     "    return redis.call('EXPIRE', KEYS[1], ARGV[2]) " +
@@ -41,53 +61,138 @@ public class RedisLockService {
                     "    return 0 " +
                     "end";
 
+    // PHASE 3: Lua script for validating fencing token and performing operation
+    private static final String VALIDATE_TOKEN_AND_EXECUTE_SCRIPT =
+            "local resourceKey = KEYS[1]\n" +
+                    "local incomingToken = tonumber(ARGV[1])\n" +
+                    "local operation = ARGV[2]\n" +
+                    "\n" +
+                    "-- Get current token for this resource\n" +
+                    "local currentToken = redis.call('GET', resourceKey)\n" +
+                    "if currentToken == false then\n" +
+                    "    currentToken = 0\n" +
+                    "else\n" +
+                    "    currentToken = tonumber(currentToken)\n" +
+                    "end\n" +
+                    "\n" +
+                    "-- Only allow operation if incoming token is newer or equal\n" +
+                    "if incomingToken >= currentToken then\n" +
+                    "    redis.call('SET', resourceKey, incomingToken)\n" +
+                    "    return {1, incomingToken, currentToken}\n" +
+                    "else\n" +
+                    "    return {0, incomingToken, currentToken}\n" +
+                    "end";
+
     /**
-     * Acquire a distributed lock
-     * @param lockKey The key to lock
-     * @param ttl Time to live for the lock
-     * @param timeUnit Time unit for TTL
-     * @return true if lock acquired, false otherwise
+     * PHASE 3: Acquire a distributed lock WITH fencing token
+     * This prevents split-brain scenarios by providing a unique, increasing token
      */
-    public boolean acquireLock(String lockKey, long ttl, TimeUnit timeUnit) {
+    public FencingLockResult acquireLockWithFencing(String lockKey, long ttl, TimeUnit timeUnit) {
         try {
             String lockValue = serviceInstanceId + ":" + Instant.now().toEpochMilli();
+            String tokenKey = buildFencingTokenKey(lockKey);
+            long ttlSeconds = timeUnit.toSeconds(ttl);
 
-            Boolean acquired = redisTemplate.opsForValue()
-                    .setIfAbsent(lockKey, lockValue, Duration.ofSeconds(timeUnit.toSeconds(ttl)));
+            log.debug("Attempting to acquire lock with fencing: lockKey={}, tokenKey={}", lockKey, tokenKey);
 
-            if (Boolean.TRUE.equals(acquired)) {
-                log.info("Lock acquired successfully: key={}, value={}, ttl={}s",
-                        lockKey, lockValue, timeUnit.toSeconds(ttl));
-                return true;
-            } else {
-                String existingValue = redisTemplate.opsForValue().get(lockKey);
-                log.warn("Failed to acquire lock: key={}, existing_holder={}", lockKey, existingValue);
-                return false;
+            DefaultRedisScript<java.util.List> script = new DefaultRedisScript<>(ACQUIRE_LOCK_WITH_FENCING_SCRIPT, java.util.List.class);
+            java.util.List<Object> result = redisTemplate.execute(script,
+                    Arrays.asList(lockKey, tokenKey),
+                    lockValue,
+                    String.valueOf(ttlSeconds));
+
+            if (result != null && result.size() == 2) {
+                int acquired = ((Number) result.get(0)).intValue();
+                if (acquired == 1) {
+                    String fencingToken = result.get(1).toString();
+
+                    log.info("Lock acquired with fencing token: lockKey={}, token={}, ttl={}s",
+                            lockKey, fencingToken, ttlSeconds);
+
+                    return FencingLockResult.success(lockKey, fencingToken, lockValue);
+                }
             }
 
+            log.warn("Failed to acquire lock with fencing: lockKey={}", lockKey);
+            return FencingLockResult.failure(lockKey);
+
         } catch (Exception e) {
-            log.error("Error acquiring lock: key={}", lockKey, e);
-            return false;
+            log.error("Error acquiring lock with fencing: lockKey={}", lockKey, e);
+            return FencingLockResult.failure(lockKey);
         }
     }
 
     /**
-     * Try to acquire a distributed lock (non-blocking)
-     * This is essentially an alias for acquireLock but with clearer semantics for atomic operations
-     * @param lockKey The key to lock
-     * @param ttl Time to live for the lock
-     * @param timeUnit Time unit for TTL
-     * @return true if lock acquired immediately, false otherwise
+     * PHASE 3: Try to acquire lock with fencing (non-blocking)
+     */
+    public FencingLockResult tryLockWithFencing(String lockKey, long ttl, TimeUnit timeUnit) {
+        log.debug("Attempting to acquire lock with fencing atomically: key={}", lockKey);
+        return acquireLockWithFencing(lockKey, ttl, timeUnit);
+    }
+
+    /**
+     * PHASE 3: Validate fencing token for a resource operation
+     * Returns true if the token is valid (equal or newer than current)
+     */
+    public boolean validateFencingToken(String resourceKey, String fencingToken) {
+        if (fencingToken == null) {
+            log.warn("Fencing token is null for resource: {}", resourceKey);
+            return false;
+        }
+
+        try {
+            String tokenValidationKey = buildResourceTokenKey(resourceKey);
+
+            DefaultRedisScript<java.util.List> script = new DefaultRedisScript<>(VALIDATE_TOKEN_AND_EXECUTE_SCRIPT, java.util.List.class);
+            java.util.List<Object> result = redisTemplate.execute(script,
+                    Collections.singletonList(tokenValidationKey),
+                    fencingToken,
+                    "validate");
+
+            if (result != null && result.size() == 3) {
+                int valid = ((Number) result.get(0)).intValue();
+                String incomingToken = result.get(1).toString();
+                String currentToken = result.get(2).toString();
+
+                if (valid == 1) {
+                    log.debug("Fencing token validated successfully: resource={}, token={}, previous={}",
+                            resourceKey, incomingToken, currentToken);
+                    return true;
+                } else {
+                    log.warn("Fencing token rejected - stale operation detected: resource={}, incoming={}, current={}",
+                            resourceKey, incomingToken, currentToken);
+                    return false;
+                }
+            }
+
+            log.error("Unexpected result from token validation script: {}", result);
+            return false;
+
+        } catch (Exception e) {
+            log.error("Error validating fencing token: resource={}, token={}", resourceKey, fencingToken, e);
+            return false;
+        }
+    }
+
+    // ===================== PRESERVE EXISTING METHODS =====================
+
+    /**
+     * Acquire a distributed lock (backward compatibility)
+     */
+    public boolean acquireLock(String lockKey, long ttl, TimeUnit timeUnit) {
+        FencingLockResult result = acquireLockWithFencing(lockKey, ttl, timeUnit);
+        return result.isAcquired();
+    }
+
+    /**
+     * Try to acquire a distributed lock (backward compatibility)
      */
     public boolean tryLock(String lockKey, long ttl, TimeUnit timeUnit) {
-        log.debug("Attempting to acquire lock atomically: key={}", lockKey);
         return acquireLock(lockKey, ttl, timeUnit);
     }
 
     /**
      * Release a distributed lock
-     * @param lockKey The key to unlock
-     * @return true if lock released, false if not held by this instance
      */
     public boolean releaseLock(String lockKey) {
         try {
@@ -117,8 +222,6 @@ public class RedisLockService {
 
     /**
      * Check if a lock is currently held
-     * @param lockKey The key to check
-     * @return true if lock exists, false otherwise
      */
     public boolean isLocked(String lockKey) {
         try {
@@ -131,8 +234,6 @@ public class RedisLockService {
 
     /**
      * Get the current lock holder information
-     * @param lockKey The key to check
-     * @return Lock holder information or null if not locked
      */
     public String getLockHolder(String lockKey) {
         try {
@@ -145,10 +246,6 @@ public class RedisLockService {
 
     /**
      * Extend an existing lock TTL
-     * @param lockKey The key to extend
-     * @param ttl New TTL
-     * @param timeUnit Time unit for TTL
-     * @return true if extended, false if not held by this instance
      */
     public boolean extendLock(String lockKey, long ttl, TimeUnit timeUnit) {
         try {
@@ -195,7 +292,7 @@ public class RedisLockService {
     }
 
     /**
-     * Release all locks held by this service instance (for graceful shutdown)
+     * Release all locks held by this service instance
      */
     public void releaseAllLocksForInstance() {
         try {
@@ -211,26 +308,46 @@ public class RedisLockService {
 
     // ===================== Lock Key Builders =====================
 
-    /**
-     * Build standard lock key for order payment operations
-     */
     public static String buildPaymentLockKey(String orderId) {
         return "saga:lock:order:" + orderId + ":payment";
     }
 
-    /**
-     * Build standard lock key for order operations
-     */
     public static String buildOrderLockKey(String orderId) {
         return "saga:lock:order:" + orderId + ":order";
     }
 
-    /**
-     * Build standard lock key for saga operations
-     * This will be used for distributed saga coordination in Phase 2
-     */
     public static String buildSagaLockKey(String sagaId) {
         return "saga:lock:saga:" + sagaId;
+    }
+
+    // ===================== PHASE 3: Fencing Token Key Builders =====================
+
+    /**
+     * Build fencing token key for lock-based tokens
+     */
+    private String buildFencingTokenKey(String lockKey) {
+        return lockKey + ":token";
+    }
+
+    /**
+     * Build resource token key for operation validation
+     */
+    private String buildResourceTokenKey(String resourceKey) {
+        return "saga:token:resource:" + resourceKey;
+    }
+
+    /**
+     * Build payment resource token key
+     */
+    public static String buildPaymentResourceTokenKey(String orderId) {
+        return "saga:token:resource:payment:" + orderId;
+    }
+
+    /**
+     * Build order resource token key
+     */
+    public static String buildOrderResourceTokenKey(String orderId) {
+        return "saga:token:resource:order:" + orderId;
     }
 
     // ===================== Helper Methods =====================

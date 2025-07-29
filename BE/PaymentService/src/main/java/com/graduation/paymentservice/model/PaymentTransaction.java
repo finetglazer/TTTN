@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
@@ -17,6 +18,7 @@ import java.util.UUID;
 /**
  * Entity representing a payment transaction in the system
  */
+@Slf4j
 @Entity
 @Table(name = Constant.TABLE_PAYMENT_TRANSACTIONS, indexes = {
         @Index(name = Constant.INDEX_PAYMENT_ORDER_ID, columnList = Constant.FIELD_ORDER_ID),
@@ -87,6 +89,83 @@ public class PaymentTransaction {
 
     @Column(name = Constant.COLUMN_LAST_RETRY_AT)
     private LocalDateTime lastRetryAt;
+
+    @Column(name = "fencing_token", nullable = false)
+    private Long fencingToken = 0L;
+
+    @Column(name = "last_token_update")
+    private LocalDateTime lastTokenUpdate;
+
+
+    public boolean updateStatusWithFencing(PaymentStatus newStatus, String reason, Long fencingToken) {
+        if (fencingToken == null) {
+            log.warn("Attempted to update payment status without fencing token: orderId={}", this.orderId);
+            return false;
+        }
+
+        // Only allow updates with equal or newer fencing tokens
+        if (fencingToken >= this.fencingToken) {
+            // Update status using existing logic
+            this.status = newStatus;
+            this.mockDecisionReason = reason;
+            this.processedAt = LocalDateTime.now();
+
+            // Update fencing token
+            this.fencingToken = fencingToken;
+            this.lastTokenUpdate = LocalDateTime.now();
+
+            log.info("Payment status updated with fencing token: orderId={}, status={}, token={}",
+                    this.orderId, newStatus, fencingToken);
+            return true;
+        } else {
+            log.warn("Payment status update rejected - stale fencing token: orderId={}, incoming={}, current={}",
+                    this.orderId, fencingToken, this.fencingToken);
+            return false;
+        }
+    }
+
+    /**
+     * PHASE 3: Process payment with fencing token
+     * Preserves existing business logic while adding fencing token protection
+     */
+    public boolean processPaymentWithFencing(Long fencingToken) {
+        if (fencingToken == null) {
+            log.warn("Attempted to process payment without fencing token: orderId={}", this.orderId);
+            return false;
+        }
+
+        // Only allow processing with equal or newer fencing tokens
+        if (fencingToken >= this.fencingToken) {
+            // Use existing processPayment logic
+            processPayment();
+
+            // Update fencing token
+            this.fencingToken = fencingToken;
+            this.lastTokenUpdate = LocalDateTime.now();
+
+            log.info("Payment processed with fencing token: orderId={}, status={}, token={}",
+                    this.orderId, this.status, fencingToken);
+            return true;
+        } else {
+            log.warn("Payment processing rejected - stale fencing token: orderId={}, incoming={}, current={}",
+                    this.orderId, fencingToken, this.fencingToken);
+            return false;
+        }
+    }
+
+    /**
+     * PHASE 3: Check if a fencing token is valid for this payment
+     */
+    public boolean isValidFencingToken(Long incomingToken) {
+        return incomingToken != null && incomingToken >= this.fencingToken;
+    }
+
+    /**
+     * PHASE 3: Get fencing token info for logging and debugging
+     */
+    public String getFencingTokenInfo() {
+        return String.format("token=%d, lastUpdate=%s", fencingToken, lastTokenUpdate);
+    }
 
     /**
      * Factory method to create a new payment transaction
@@ -163,54 +242,6 @@ public class PaymentTransaction {
     }
 
     /**
-     * Business method to decline payment
-     */
-    public void declinePayment(String reason) {
-        if (this.status != PaymentStatus.PENDING) {
-            throw new IllegalStateException(String.format(Constant.ERROR_PAYMENT_ONLY_DECLINE_PENDING, this.status));
-        }
-
-        this.status = PaymentStatus.DECLINED;
-        this.failureReason = reason;
-        this.mockDecisionReason = reason;
-    }
-
-    /**
-     * Business method to mark payment as failed
-     */
-    public void markAsFailed(String reason) {
-        if (this.status.isFinalStatus() && this.status != PaymentStatus.PENDING) {
-            throw new IllegalStateException(String.format(Constant.ERROR_CANNOT_MARK_FAILED_FINAL, this.status));
-        }
-
-        this.status = PaymentStatus.FAILED;
-        this.failureReason = reason;
-        this.mockDecisionReason = reason;
-    }
-
-    /**
-     * Business method to retry payment
-     */
-    public void retryPayment() {
-        if (!this.status.allowsRetry()) {
-            throw new IllegalStateException(String.format(Constant.ERROR_RETRY_NOT_ALLOWED, this.status));
-        }
-
-        this.retryCount++;
-        this.lastRetryAt = LocalDateTime.now();
-        this.status = PaymentStatus.PENDING;
-        this.failureReason = null;
-        this.mockDecisionReason = String.format(Constant.REASON_PAYMENT_RETRY_FORMAT, this.retryCount);
-    }
-
-    /**
-     * Check if payment can be retried
-     */
-    public boolean canBeRetried() {
-        return this.status.allowsRetry() && this.retryCount < Constant.MAX_RETRY_COUNT;
-    }
-
-    /**
      * Mock payment processing logic
      */
     private PaymentResult mockPaymentProcessing() {
@@ -220,7 +251,7 @@ public class PaymentTransaction {
         if (amount.compareTo(BigDecimal.valueOf(Constant.HIGH_AMOUNT_THRESHOLD)) > 0) {
             // High amounts might be declined
             if (Math.random() < Constant.DECLINE_PROBABILITY) {
-                return new PaymentResult(PaymentStatus.DECLINED, null,
+                return new PaymentResult(PaymentStatus.FAILED, null,
                         Constant.REASON_HIGH_AMOUNT_DECLINED, externalId);
             }
         }

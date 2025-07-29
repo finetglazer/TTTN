@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -19,6 +20,7 @@ import java.util.List;
 /**
  * Entity representing an order in the system
  */
+@Slf4j
 @Entity
 @Table(name = Constant.TABLE_ORDERS, indexes = {
         @Index(name = Constant.INDEX_ORDER_USER_ID, columnList = Constant.COLUMN_USER_ID),
@@ -86,9 +88,159 @@ public class Order {
     @Builder.Default
     private List<OrderHistory> orderHistories = new ArrayList<>();
 
+    @Column(name = "fencing_token", nullable = false)
+    private Long fencingToken = 0L;
+
+    @Column(name = "last_token_update")
+    private LocalDateTime lastTokenUpdate;
     /**
      * Business method to create a new order
      */
+
+    /**
+     * PHASE 3: Update order status with fencing token validation
+     * Only allows updates from operations with equal or newer fencing tokens
+     */
+    public boolean updateStatusWithFencing(OrderStatus newStatus, String reason, String changedBy, Long fencingToken) {
+        if (fencingToken == null) {
+            log.warn("Attempted to update order status without fencing token: orderId={}", this.id);
+            return false;
+        }
+
+        // Only allow updates with equal or newer fencing tokens
+        if (fencingToken >= this.fencingToken) {
+            // Use existing updateStatus logic but with fencing protection
+            OrderStatus previousStatus = this.status;
+
+            // Update status using existing business logic
+            this.status = newStatus;
+            this.updatedAt = LocalDateTime.now();
+
+            // Add to history using existing logic
+            OrderHistory historyEntry = OrderHistory.builder()
+                    .order(this)
+                    .previousStatus(previousStatus)
+                    .newStatus(newStatus)
+                    .reason(reason)
+                    .changedBy(changedBy)
+                    .changedAt(LocalDateTime.now())
+                    .build();
+
+            if (this.orderHistories == null) {
+                this.orderHistories = new ArrayList<>();
+            }
+            this.orderHistories.add(historyEntry);
+
+            // Update fencing token
+            this.fencingToken = fencingToken;
+            this.lastTokenUpdate = LocalDateTime.now();
+
+            log.info("Order status updated with fencing token: orderId={}, status={}, token={}",
+                    this.id, newStatus, fencingToken);
+            return true;
+        } else {
+            log.warn("Order status update rejected - stale fencing token: orderId={}, incoming={}, current={}",
+                    this.id, fencingToken, this.fencingToken);
+            return false;
+        }
+    }
+
+    /**
+     * PHASE 3: Cancel order with fencing token validation
+     * Preserves existing cancellation logic while adding fencing token protection
+     */
+    public boolean cancelWithFencing(String reason, String changedBy, Long fencingToken) {
+        if (fencingToken == null) {
+            log.warn("Attempted to cancel order without fencing token: orderId={}", this.id);
+            return false;
+        }
+
+        // Only allow cancellation with equal or newer fencing tokens
+        if (fencingToken >= this.fencingToken) {
+            // Can cancel from CREATED or CONFIRMED status
+            boolean canCancel = this.status == OrderStatus.CREATED || this.status == OrderStatus.CONFIRMED;
+
+            if (canCancel) {
+                // CORRECTED: First transition to CANCELLATION_PENDING
+                updateStatusWithFencing(OrderStatus.CANCELLATION_PENDING, reason, changedBy, fencingToken);
+                log.info("Order cancellation initiated with fencing token: orderId={}, token={}", this.id, fencingToken);
+                return true;
+            } else {
+                log.warn("Order cannot be cancelled in current status: orderId={}, status={}", this.id, this.status);
+                return false;
+            }
+        } else {
+            log.warn("Order cancellation rejected - stale fencing token: orderId={}, incoming={}, current={}",
+                    this.id, fencingToken, this.fencingToken);
+            return false;
+        }
+    }
+
+    /**
+     * PHASE 3: Confirm order with fencing token validation
+     */
+    public boolean confirmWithFencing(String reason, String changedBy, Long fencingToken) {
+        if (fencingToken == null) {
+            log.warn("Attempted to confirm order without fencing token: orderId={}", this.id);
+            return false;
+        }
+
+        // Only allow confirmation with equal or newer fencing tokens
+        if (fencingToken >= this.fencingToken && this.status == OrderStatus.CREATED) {
+            updateStatusWithFencing(OrderStatus.CONFIRMED, reason, changedBy, fencingToken);
+            log.info("Order confirmed with fencing token: orderId={}, token={}", this.id, fencingToken);
+            return true;
+        } else if (fencingToken < this.fencingToken) {
+            log.warn("Order confirmation rejected - stale fencing token: orderId={}, incoming={}, current={}",
+                    this.id, fencingToken, this.fencingToken);
+            return false;
+        } else {
+            log.warn("Order cannot be confirmed in current status: orderId={}, status={}", this.id, this.status);
+            return false;
+        }
+    }
+
+    /**
+     * PHASE 3: Deliver order with fencing token validation
+     */
+    public boolean deliverWithFencing(String reason, String changedBy, Long fencingToken) {
+        if (fencingToken == null) {
+            log.warn("Attempted to deliver order without fencing token: orderId={}", this.id);
+            return false;
+        }
+
+        // Only allow delivery with equal or newer fencing tokens
+        if (fencingToken >= this.fencingToken && this.status == OrderStatus.CONFIRMED) {
+            updateStatusWithFencing(OrderStatus.DELIVERED, reason, changedBy, fencingToken);
+            log.info("Order delivered with fencing token: orderId={}, token={}", this.id, fencingToken);
+            return true;
+        } else if (fencingToken < this.fencingToken) {
+            log.warn("Order delivery rejected - stale fencing token: orderId={}, incoming={}, current={}",
+                    this.id, fencingToken, this.fencingToken);
+            return false;
+        } else {
+            log.warn("Order cannot be delivered in current status: orderId={}, status={}", this.id, this.status);
+            return false;
+        }
+    }
+
+    /**
+     * PHASE 3: Check if a fencing token is valid for this order
+     */
+    public boolean isValidFencingToken(Long incomingToken) {
+        return incomingToken != null && incomingToken >= this.fencingToken;
+    }
+
+    /**
+     * PHASE 3: Get fencing token info for logging and debugging
+     */
+    public String getFencingTokenInfo() {
+        return String.format("token=%d, lastUpdate=%s", fencingToken, lastTokenUpdate);
+    }
+
+
+
+
     public static Order createOrder(String userId, String userEmail, String userName,
                                     String orderDescription, BigDecimal totalAmount, String shippingAddress) {
         return Order.builder()
@@ -151,28 +303,6 @@ public class Order {
     }
 
     /**
-     * Business method to confirm the order
-     */
-    public void confirm(String confirmedBy) {
-        if (this.status != OrderStatus.CREATED) {
-            throw new IllegalStateException(String.format(Constant.ERROR_CAN_ONLY_CONFIRM_CREATED, this.status));
-        }
-
-        updateStatus(OrderStatus.CONFIRMED, Constant.REASON_ORDER_CONFIRMED, confirmedBy);
-    }
-
-    /**
-     * Business method to mark order as delivered
-     */
-    public void markAsDelivered(String deliveredBy) {
-        if (this.status != OrderStatus.CONFIRMED) {
-            throw new IllegalStateException(String.format(Constant.ERROR_CAN_ONLY_DELIVER_CONFIRMED, this.status));
-        }
-
-        updateStatus(OrderStatus.DELIVERED, Constant.REASON_ORDER_DELIVERED, deliveredBy);
-    }
-
-    /**
      * Get order details for external communication
      */
     public OrderDetails getOrderDetails() {
@@ -187,13 +317,6 @@ public class Order {
                 .createdAt(this.createdAt)
                 .sagaId(this.sagaId)
                 .build();
-    }
-
-    /**
-     * Check if order can be modified
-     */
-    public boolean canBeModified() {
-        return this.status == OrderStatus.CREATED;
     }
 
     /**

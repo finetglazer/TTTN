@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -126,6 +127,12 @@ public class OrderPurchaseSagaState {
 
     @Transient
     private List<SagaEvent> sagaEvents;
+
+    @Column(name = "fencing_token", nullable = false)
+    private Long fencingToken = 0L;
+
+    @Column(name = "last_token_update")
+    private LocalDateTime lastTokenUpdate;
 
     /**
      * Factory method to initiate a new order purchase saga
