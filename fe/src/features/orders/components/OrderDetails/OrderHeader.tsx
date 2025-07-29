@@ -1,19 +1,16 @@
 // fe/src/features/orders/components/OrderDetails/OrderHeader.tsx
 'use client';
 
-import { ArrowLeft, X } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { OrderDetail } from '@/features/orders/types/orders.detail.types';
+import { CancelOrderButtonLarge } from '@/features/orders/components/CancelOrderButton';
 
 interface OrderHeaderProps {
     order: OrderDetail;
     onBack: () => void;
-    onCancel?: () => void;
 }
 
-export function OrderHeader({ order, onBack, onCancel }: OrderHeaderProps) {
-    // const canCancel = order.status === ORDER.STATUS.CREATED; // Now, just assume
-    const canCancel = true;
-
+export function OrderHeader({ order, onBack }: OrderHeaderProps) {
     return (
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
             <div className="flex items-center justify-between">
@@ -38,15 +35,10 @@ export function OrderHeader({ order, onBack, onCancel }: OrderHeaderProps) {
                 </div>
 
                 {/* Right side - Cancel button (conditional) */}
-                {canCancel && (
-                    <button
-                        onClick={onCancel}
-                        className="flex items-center space-x-2 px-4 py-2 border border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400 rounded-lg transition-colors duration-200"
-                    >
-                        <X className="w-4 h-4" />
-                        <span className="font-medium">Cancel Order</span>
-                    </button>
-                )}
+                <CancelOrderButtonLarge
+                    orderId={order.orderId.toString()}
+                    orderStatus={order.status}
+                />
             </div>
 
             {/* Order meta information */}
@@ -55,25 +47,19 @@ export function OrderHeader({ order, onBack, onCancel }: OrderHeaderProps) {
                     <div>
                         <span className="text-[#718096]">Order Date:</span>
                         <span className="ml-2 font-medium text-[#1a1a1a]">
-                            {new Date(order.createdAt).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                            })}
+                            {new Date(order.createdAt).toLocaleDateString()}
                         </span>
                     </div>
                     <div>
-                        <span className="text-[#718096]">Customer Email:</span>
+                        <span className="text-[#718096]">Status:</span>
                         <span className="ml-2 font-medium text-[#1a1a1a]">
-                            {order.userEmail}
+                            {order.status.replace('_', ' ')}
                         </span>
                     </div>
                     <div>
                         <span className="text-[#718096]">Total Amount:</span>
-                        <span className="ml-2 font-bold text-[#f6d55c] text-lg">
-                            ${order.totalAmount.toFixed(2)}
+                        <span className="ml-2 font-medium text-[#f6d55c]">
+                            ${order.totalAmount?.toFixed(2) || '0.00'}
                         </span>
                     </div>
                 </div>

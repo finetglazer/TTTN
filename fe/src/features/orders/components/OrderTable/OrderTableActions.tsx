@@ -2,43 +2,34 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { ORDER } from '@/core/config/constants';
 import { OrdersDashboardDisplay } from '@/features/orders/types/orders.dashboard.types';
+import { CancelOrderButtonSmall } from '@/features/orders/components/CancelOrderButton';
 
 interface OrderTableActionsProps {
     order: OrdersDashboardDisplay;
-    onCancel?: (orderId: string) => void;
 }
 
-export function OrderTableActions({ order, onCancel }: OrderTableActionsProps) {
+export function OrderTableActions({ order }: OrderTableActionsProps) {
     const router = useRouter();
 
     const handleViewDetails = () => {
         router.push(`/orders/${order.orderId}`);
     };
 
-    const handleCancel = () => {
-        if (onCancel) {
-            onCancel(order.orderId);
-        }
-    };
-
     return (
         <div className="flex items-center space-x-2">
             <button
                 onClick={handleViewDetails}
-                className="btn-ghost inline-flex items-center"
+                className="btn-ghost inline-flex items-center text-sm px-3 py-1 rounded-md hover:bg-gray-100 transition-colors duration-200"
             >
                 View Details
             </button>
-            {order.orderStatus === ORDER.STATUS.CREATED && (
-                <button
-                    onClick={handleCancel}
-                    className="btn-secondary text-red-600 border-red-600 hover:bg-red-600 hover:text-white"
-                >
-                    Cancel
-                </button>
-            )}
+
+            {/* Use the new CancelOrderButton component */}
+            <CancelOrderButtonSmall
+                orderId={order.orderId}
+                orderStatus={order.orderStatus}
+            />
         </div>
     );
 }
@@ -54,14 +45,16 @@ export function OrderRowWithNavigation({
     const getStatusBadgeClass = (status: string) => {
         const baseClass = 'px-2 py-1 rounded-full text-xs font-medium ';
         switch (status) {
-            case ORDER.STATUS.CREATED:
+            case 'CREATED':
                 return baseClass + 'bg-blue-100 text-blue-800';
-            case ORDER.STATUS.CONFIRMED:
+            case 'CONFIRMED':
                 return baseClass + 'bg-orange-100 text-orange-800';
-            case ORDER.STATUS.DELIVERED:
+            case 'DELIVERED':
                 return baseClass + 'bg-green-100 text-green-800';
-            case ORDER.STATUS.CANCELLED:
+            case 'CANCELLED':
                 return baseClass + 'bg-red-100 text-red-800';
+            case 'CANCELLATION_PENDING':
+                return baseClass + 'bg-yellow-100 text-yellow-800';
             default:
                 return baseClass + 'bg-gray-100 text-gray-800';
         }
@@ -74,38 +67,30 @@ export function OrderRowWithNavigation({
                 index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
             }`}
         >
-            {/* Fixed Order column - restore two-line structure */}
             <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex flex-col">
-                    <span className="text-sm font-medium text-[#1a1a1a]">
-                        {order.orderId}
-                    </span>
-                    <span className="text-xs text-[#718096] truncate max-w-xs">
-                        {order.orderDescription}
-                    </span>
+                <div className="text-sm font-medium text-gray-900">
+                    #{order.orderId}
                 </div>
             </td>
             <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex flex-col">
-                    <span className="text-sm font-medium text-[#2d3748]">
-                        {order.userName}
-                    </span>
-                </div>
+                <div className="text-sm text-gray-900">{order.userName}</div>
             </td>
             <td className="px-6 py-4 whitespace-nowrap">
-                <span className="text-sm font-semibold text-[#1a1a1a]">
+                <div className="text-sm font-medium text-gray-900">
                     ${order.totalAmount.toFixed(2)}
-                </span>
+                </div>
             </td>
             <td className="px-6 py-4 whitespace-nowrap">
                 <span className={getStatusBadgeClass(order.orderStatus)}>
-                    {order.orderStatus}
+                    {order.orderStatus.replace('_', ' ')}
                 </span>
             </td>
-            <td className="px-6 py-4 whitespace-nowrap text-sm text-[#718096]">
-                {new Date(order.createdAt).toLocaleDateString()}
-            </td>
             <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-500">
+                    {new Date(order.createdAt).toLocaleDateString()}
+                </div>
+            </td>
+            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <OrderTableActions order={order} />
             </td>
         </tr>
