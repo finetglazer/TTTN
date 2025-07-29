@@ -8,6 +8,7 @@
         <option value="$PROJECT_DIR$/BE/pom.xml" />
         <option value="$PROJECT_DIR$/BE/PaymentService/pom.xml" />
         <option value="$PROJECT_DIR$/BE/SagaOrchestratorService/pom.xml" />
+        <option value="$PROJECT_DIR$/integration-tests/pom.xml" />
       </list>
     </option>
   </component>
