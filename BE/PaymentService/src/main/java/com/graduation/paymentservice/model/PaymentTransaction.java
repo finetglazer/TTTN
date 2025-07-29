@@ -91,6 +91,7 @@ public class PaymentTransaction {
     private LocalDateTime lastRetryAt;
 
     @Column(name = "fencing_token", nullable = false)
+    @Builder.Default
     private Long fencingToken = 0L;
 
     @Column(name = "last_token_update")
@@ -294,6 +295,10 @@ public class PaymentTransaction {
         }
         if (this.transactionReference == null) {
             this.transactionReference = generateTransactionReference();
+        }
+        // Add this line to ensure fencingToken is never null
+        if (this.fencingToken == null) {
+            this.fencingToken = 0L;
         }
     }
 

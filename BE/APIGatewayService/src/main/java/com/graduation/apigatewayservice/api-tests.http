@@ -8,3 +8,7 @@ Accept: application/json
 
 ### Rate Limit Test with Script
 GET http://localhost:8080/api/orders/test
+
+### Cancel Order
+POST http://localhost:8080/api/orders/1/cancel?
+    reason="It is too bad!"

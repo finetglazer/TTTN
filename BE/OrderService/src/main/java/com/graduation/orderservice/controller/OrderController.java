@@ -149,7 +149,7 @@ public class OrderController {
             OrderStatus currentStatus = order.getStatus();
 
             // Check order status eligibility (CREATED or CONFIRMED only)
-            if (currentStatus.canBeCancelled()) {
+            if (!currentStatus.canBeCancelled()) {
                 String statusMessage;
                 if (currentStatus == OrderStatus.DELIVERED) {
                     statusMessage = Constant.ERROR_INVALID_ORDER_STATUS_DELIVERED_FOR_CANCELLING;

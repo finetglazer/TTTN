@@ -101,24 +101,23 @@ public class Order {
      * PHASE 3: Update order status with fencing token validation
      * Only allows updates from operations with equal or newer fencing tokens
      */
+    // Order.java
+
     public boolean updateStatusWithFencing(OrderStatus newStatus, String reason, String changedBy, Long fencingToken) {
         if (fencingToken == null) {
             log.warn("Attempted to update order status without fencing token: orderId={}", this.id);
             return false;
         }
 
-        // Only allow updates with equal or newer fencing tokens
         if (fencingToken >= this.fencingToken) {
-            // Use existing updateStatus logic but with fencing protection
             OrderStatus previousStatus = this.status;
 
-            // Update status using existing business logic
             this.status = newStatus;
             this.updatedAt = LocalDateTime.now();
 
-            // Add to history using existing logic
             OrderHistory historyEntry = OrderHistory.builder()
                     .order(this)
+                    .orderId(this.id) // Corrected: Set the orderId
                     .previousStatus(previousStatus)
                     .newStatus(newStatus)
                     .reason(reason)
@@ -131,7 +130,6 @@ public class Order {
             }
             this.orderHistories.add(historyEntry);
 
-            // Update fencing token
             this.fencingToken = fencingToken;
             this.lastTokenUpdate = LocalDateTime.now();
 
@@ -262,13 +260,13 @@ public class Order {
             return; // No change needed
         }
 
-        // Check current = CREATED, newStatus must be CONFIRMED or CANCELLED
-        if (this.status.equals(OrderStatus.CREATED) && !newStatus.equals(OrderStatus.CONFIRMED) && !newStatus.equals(OrderStatus.CANCELLED)) {
+        // Check current = CREATED, newStatus must be CONFIRMED or CANCELLED or CANCELLATION_PENDING
+        if (this.status.equals(OrderStatus.CREATED) && !newStatus.equals(OrderStatus.CONFIRMED) && !newStatus.equals(OrderStatus.CANCELLED ) && !newStatus.equals(OrderStatus.CANCELLATION_PENDING)) {
             throw new IllegalArgumentException(String.format(Constant.ERROR_INVALID_STATUS_TRANSITION, this.status, newStatus));
         }
 
-        // Check current = CONFIRMED, newStatus must be DELIVERED or CANCELLED
-        if (this.status.equals(OrderStatus.CONFIRMED) && !newStatus.equals(OrderStatus.DELIVERED) && !newStatus.equals(OrderStatus.CANCELLED)) {
+        // Check current = CONFIRMED, newStatus must be DELIVERED or CANCELLED or CANCELLATION_PENDING
+        if (this.status.equals(OrderStatus.CONFIRMED) && !newStatus.equals(OrderStatus.DELIVERED) && !newStatus.equals(OrderStatus.CANCELLED) && !newStatus.equals(OrderStatus.CANCELLATION_PENDING)) {
             throw new IllegalArgumentException(String.format(Constant.ERROR_INVALID_STATUS_TRANSITION, this.status, newStatus));
         }
 
@@ -291,16 +289,6 @@ public class Order {
         this.status = newStatus;
     }
 
-    /**
-     * Business method to cancel the order
-     */
-    public void cancel(String reason, String cancelledBy) {
-        if (this.status.canBeCancelled()) {
-            throw new IllegalStateException(String.format(Constant.ERROR_CANNOT_CANCEL_STATUS, this.status));
-        }
-
-        updateStatus(OrderStatus.CANCELLED, reason, cancelledBy);
-    }
 
     /**
      * Get order details for external communication
