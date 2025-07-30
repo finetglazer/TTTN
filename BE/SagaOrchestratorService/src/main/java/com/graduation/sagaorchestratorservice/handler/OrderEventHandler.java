@@ -66,7 +66,7 @@ public class OrderEventHandler {
      */
     private void handleCancelRequestReceived(Map<String, Object> event) {
         String sagaId = (String) event.get(Constant.FIELD_SAGA_ID);
-        String orderId = (String) event.get(Constant.FIELD_ORDER_ID);
+        String orderId = String.valueOf(event.get(Constant.FIELD_ORDER_ID));
         String reason = (String) event.get(Constant.FIELD_REASON);
 
         log.info(Constant.LOG_CANCEL_REQUEST_RECEIVED, sagaId, orderId, reason);

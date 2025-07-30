@@ -163,6 +163,14 @@ public class OrderCommandHandlerService {
             updateOrderStatus(orderId, OrderStatus.CONFIRMED, reason, sagaId);
             idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.SUCCESS);
 
+            // set up wait for 10 seconds before publishing event
+            try {
+                Thread.sleep(10000); // 10 seconds delay
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                log.warn(Constant.LOG_THREAD_INTERRUPTED, sagaId);
+            }
+
             // Publish success event
             publishOrderEvent(sagaId, orderId, Constant.EVENT_ORDER_STATUS_UPDATED_CONFIRMED, true,
                     Constant.STATUS_DESC_CONFIRMED, null);
@@ -280,6 +288,43 @@ public class OrderCommandHandlerService {
             publishOrderEvent(sagaId, orderId, Constant.EVENT_ORDER_CANCELLATION_FAILED, false,
                     null, e.getMessage());
         }
+    }
+
+    @Transactional
+    public boolean cancelOrderDirectly(Long orderId, OrderStatus expectedStatus, String reason) {
+        try {
+            // Atomically update from CREATED to CANCELLED
+            boolean updatedRows = updateOrderStatusAtomically(
+                    orderId,
+                    expectedStatus,
+                    OrderStatus.CANCELLED,
+                    "Direct cancellation: " + reason,
+                    "DIRECT_CANCELLATION"
+            );
+
+            if (updatedRows) {
+                // Optionally publish a simple cancellation event (not for saga)
+                publishOrderCancelledEvent(orderId, reason, "DIRECT");
+                return true;
+            }
+
+            return false;
+        } catch (Exception e) {
+            log.error("Failed to cancel order directly: orderId={}", orderId, e);
+            return false;
+        }
+    }
+
+    private void publishOrderCancelledEvent(Long orderId, String reason, String cancellationType) {
+        Map<String, Object> event = Map.of(
+                "orderId", orderId,
+                "reason", reason,
+                "type", "ORDER_CANCELLED",
+                "cancellationType", cancellationType,
+                "timestamp", System.currentTimeMillis()
+        );
+
+        kafkaTemplate.send("order-events", event);
     }
 
     /**

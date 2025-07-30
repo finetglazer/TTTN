@@ -149,7 +149,7 @@ public class OrderController {
             OrderStatus currentStatus = order.getStatus();
 
             // Check order status eligibility (CREATED or CONFIRMED only)
-            if (currentStatus.canBeCancelled()) {
+            if (!currentStatus.canBeCancelled()) {
                 String statusMessage;
                 if (currentStatus == OrderStatus.DELIVERED) {
                     statusMessage = Constant.ERROR_INVALID_ORDER_STATUS_DELIVERED_FOR_CANCELLING;
@@ -168,36 +168,63 @@ public class OrderController {
 
             // Atomically transition to CANCELLATION_PENDING
             String cancelReason = reason != null ? reason : "User cancellation request";
-            boolean statusUpdated = orderCommandHandlerService.updateOrderStatusAtomically(
-                    orderId,
-                    currentStatus,
-                    OrderStatus.CANCELLATION_PENDING,
-                    "Cancellation initiated: " + cancelReason,
-                    "USER_REQUEST"
-            );
+            // **KEY CHANGE: Handle CREATED orders directly**
+            if (currentStatus == OrderStatus.CREATED) {
+                // Direct cancellation - no saga needed
+                boolean cancelled = orderCommandHandlerService.cancelOrderDirectly(
+                        orderId,
+                        currentStatus,
+                        cancelReason
+                );
 
-            if (!statusUpdated) {
-                // Status update failed (likely due to concurrent modification)
-                return ResponseEntity.ok(new BaseResponse<>(0,
-                        "Cancellation failed",
-                        "Order status changed while processing cancellation. Please try again."));
+                if (!cancelled) {
+                    return ResponseEntity.ok(new BaseResponse<>(0,
+                            "Cancellation failed",
+                            "Order status changed while processing cancellation. Please try again."));
+                }
+
+                log.info("Order {} cancelled directly (was in CREATED status)", orderId);
+
+                Map<String, Object> responseData = Map.of(
+                        Constant.FIELD_ORDER_ID, orderId,
+                        Constant.FIELD_ORDER_STATUS, OrderStatus.CANCELLED.name().toLowerCase()
+                );
+
+                return ResponseEntity.ok(new BaseResponse<>(1,
+                        "Order cancelled successfully",
+                        responseData));
             }
+            else {
+                // For CONFIRMED orders - use saga orchestration
+                boolean statusUpdated = orderCommandHandlerService.updateOrderStatusAtomically(
+                        orderId,
+                        currentStatus,
+                        OrderStatus.CANCELLATION_PENDING,
+                        "Cancellation initiated: " + cancelReason,
+                        "USER_REQUEST"
+                );
 
-            // Now initiate cancellation via saga (order is safely in CANCELLATION_PENDING)
-            Order updatedOrder = orderRepository.findById(orderId).orElseThrow();
-            orderCommandHandlerService.initiateCancellation(updatedOrder, cancelReason);
+                if (!statusUpdated) {
+                    return ResponseEntity.ok(new BaseResponse<>(0,
+                            "Cancellation failed",
+                            "Order status changed while processing cancellation. Please try again."));
+                }
 
-            log.info("Cancellation initiated successfully: orderId={}", orderId);
+                // Initiate saga-based cancellation for complex orders
+                Order updatedOrder = orderRepository.findById(orderId).orElseThrow();
+                orderCommandHandlerService.initiateCancellation(updatedOrder, cancelReason);
 
-            // Return success response to frontend with "cancellation initiated" message
-            Map<String, Object> responseData = Map.of(
-                    Constant.FIELD_ORDER_ID, orderId,
-                    Constant.FIELD_ORDER_STATUS, OrderStatus.CANCELLATION_PENDING.name().toLowerCase()
-            );
+                log.info("Saga-based cancellation initiated: orderId={}", orderId);
 
-            return ResponseEntity.ok(new BaseResponse<>(1,
-                    Constant.ORDER_CANCELLATION_INITIATED,
-                    responseData));
+                Map<String, Object> responseData = Map.of(
+                        Constant.FIELD_ORDER_ID, orderId,
+                        Constant.FIELD_ORDER_STATUS, OrderStatus.CANCELLATION_PENDING.name().toLowerCase()
+                );
+
+                return ResponseEntity.ok(new BaseResponse<>(1,
+                        Constant.ORDER_CANCELLATION_INITIATED,
+                        responseData));
+            }
 
         } catch (Exception e) {
             log.error("Error processing cancellation request for order: {}", orderId, e);

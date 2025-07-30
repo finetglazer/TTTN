@@ -27,7 +27,7 @@ public class PaymentCommandHandlerService {
     private final PaymentTransactionRepository paymentRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final IdempotencyService idempotencyService;
-    private final RedisLockService redisLockService; // Add this field
+    private final RedisLockService redisLockService;
 
     /**
      * Handle process payment command WITH DISTRIBUTED LOCKING
@@ -170,7 +170,7 @@ public class PaymentCommandHandlerService {
         Map<String, Object> payload = (Map<String, Object>) command.get(Constant.FIELD_PAYLOAD);
         String orderId = (String) payload.get(Constant.FIELD_ORDER_ID);
         String reason = (String) payload.get(Constant.FIELD_REASON);
-        String paymentTransactionId = (String) payload.get(Constant.FIELD_PAYMENT_TRANSACTION_ID);
+        String paymentTransactionId = String.valueOf(payload.get(Constant.FIELD_PAYMENT_TRANSACTION_ID));
 
         // PRESERVE EXISTING: Check if payload is valid
         if (orderId == null || orderId.isEmpty() || paymentTransactionId == null || paymentTransactionId.isEmpty() || reason == null || reason.isEmpty()) {

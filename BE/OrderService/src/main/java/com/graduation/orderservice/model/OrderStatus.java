@@ -45,7 +45,7 @@ public enum OrderStatus {
      * CANCELLATION_PENDING orders cannot be cancelled again (prevent double-click)
      */
     public boolean canBeCancelled() {
-        return this == CREATED || this == CONFIRMED;
+        return this == CREATED || this == CONFIRMED || this == CANCELLATION_PENDING;
     }
 
     /**

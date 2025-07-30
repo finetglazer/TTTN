@@ -34,3 +34,6 @@ POST http://localhost:8080/api/orders/123/cancel?reason=Changed mind
 ### Test unauthorized access
 POST http://localhost:8080/api/orders/123/cancel
 
+### Test cancel
+POST http://localhost:8080/api/orders/166/cancel?reason="It is too bad!"
+

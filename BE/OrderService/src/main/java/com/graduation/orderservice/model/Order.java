@@ -110,13 +110,13 @@ public class Order {
             return; // No change needed
         }
 
-        // Check current = CREATED, newStatus must be CONFIRMED or CANCELLED
-        if (this.status.equals(OrderStatus.CREATED) && !newStatus.equals(OrderStatus.CONFIRMED) && !newStatus.equals(OrderStatus.CANCELLED)) {
+        // Check current = CREATED, newStatus must be CONFIRMED or CANCELLED or CANCELLATION_PENDING
+        if (this.status.equals(OrderStatus.CREATED) && !newStatus.equals(OrderStatus.CONFIRMED) && !newStatus.equals(OrderStatus.CANCELLED) && !newStatus.equals(OrderStatus.CANCELLATION_PENDING)) {
             throw new IllegalArgumentException(String.format(Constant.ERROR_INVALID_STATUS_TRANSITION, this.status, newStatus));
         }
 
-        // Check current = CONFIRMED, newStatus must be DELIVERED or CANCELLED
-        if (this.status.equals(OrderStatus.CONFIRMED) && !newStatus.equals(OrderStatus.DELIVERED) && !newStatus.equals(OrderStatus.CANCELLED)) {
+        // Check current = CONFIRMED, newStatus must be DELIVERED or CANCELLED or CANCELLATION_PENDING
+        if (this.status.equals(OrderStatus.CONFIRMED) && !newStatus.equals(OrderStatus.DELIVERED) && !newStatus.equals(OrderStatus.CANCELLED) && !newStatus.equals(OrderStatus.CANCELLATION_PENDING)) {
             throw new IllegalArgumentException(String.format(Constant.ERROR_INVALID_STATUS_TRANSITION, this.status, newStatus));
         }
 
@@ -143,7 +143,7 @@ public class Order {
      * Business method to cancel the order
      */
     public void cancel(String reason, String cancelledBy) {
-        if (this.status.canBeCancelled()) {
+        if (!this.status.canBeCancelled()) {
             throw new IllegalStateException(String.format(Constant.ERROR_CANNOT_CANCEL_STATUS, this.status));
         }
 
