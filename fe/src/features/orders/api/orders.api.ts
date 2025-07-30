@@ -42,7 +42,7 @@ export const ordersApi = {
         return parsedResponse.data;
     },
     // Cancel an order by ID
-    cancelOrder: async (orderId: string, reason?: string): Promise<{success: boolean, message: string}> => {
+    cancelOrder: async (orderId: string, reason?: string): Promise<{status: number, msg: string, data: object}> => {
         const params = new URLSearchParams();
         if (reason) params.append('reason', reason);
 
@@ -50,9 +50,6 @@ export const ordersApi = {
         const url = `${API.ENDPOINTS.ORDERS.BASE_URL}/${orderId}/cancel${queryString ? '?' + queryString : ''}`;
 
         const { data } = await axiosClient.post(url);
-        return {
-            success: data.success === 1,
-            message: data.message || 'Order cancellation processed'
-        };
+        return data;
     }
 };

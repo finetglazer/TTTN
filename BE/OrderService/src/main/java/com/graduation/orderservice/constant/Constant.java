@@ -48,7 +48,6 @@ public class Constant {
     public static final String EVENT_ORDER_CANCELLATION_FAILED = "ORDER_CANCELLATION_FAILED";
     public static final String EVENT_CANCEL_REQUEST_RECEIVED = "CANCEL_REQUEST_RECEIVED";
 
-
     // ===================== MAP FIELD NAMES =====================
     public static final String FIELD_TYPE = "type";
     public static final String FIELD_SAGA_ID = "sagaId";
@@ -109,6 +108,9 @@ public class Constant {
     public static final String REASON_ORDER_CONFIRMED_SUCCESS = "Order confirmed successfully";
     public static final String REASON_ORDER_DELIVERED_SUCCESS = "Order delivered successfully";
     public static final String REASON_ORDER_CANCELLED_SAGA = "Order cancelled by saga";
+    public static final String REASON_ORDER_CANCELLED_SUCCESS = "Order cancelled as requested";
+
+
 
     // ===================== ORDER HISTORY MESSAGES =====================
     public static final String CHANGE_DESC_FORMAT = "Status changed from %s to %s";
@@ -171,7 +173,12 @@ public class Constant {
     public static final String LOG_ERROR_PUBLISHING_EVENT = "Error publishing order event: {}";
     public static final String LOG_PAYMENT_LOCK_CHECK = "Checking payment lock for order cancellation: orderId={}, lockKey={}";
     public static final String LOG_PAYMENT_IN_PROGRESS = "Payment in progress detected: orderId={}, lockHolder={}";
-
+    // Log messages for cancellation
+    public static final String LOG_UPDATING_ORDER_CANCELLED = "Updating order to CANCELLED status: orderId={}, sagaId={}";
+    public static final String LOG_PROCESSING_CANCELLATION_WAIT = "Processing cancellation with 10s delay for sagaId={}";
+    public static final String LOG_ERROR_UPDATING_CANCELLED = "Error updating order to CANCELLED status: {}";
+    public static final String LOG_SAGA_CANCELLATION_COMPLETED = "Saga cancellation completed successfully: sagaId={}, orderId={}";
+    public static final String LOG_SAGA_CANCELLATION_FAILED = "Saga cancellation failed: sagaId={}, orderId={}, error={}";
     // ===================== BUSINESS ERROR MESSAGES =====================
     public static final String ERROR_ORDER_NOT_FOUND_ID = "Order not found: %s";
     public static final String ERROR_AUTHORIZATION = "You are not authorized to cancel this order";

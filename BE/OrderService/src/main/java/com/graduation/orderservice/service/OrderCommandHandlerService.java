@@ -279,6 +279,63 @@ public class OrderCommandHandlerService {
     }
 
     /**
+     * Handle order update cancelled command
+     */
+    public void handleUpdateOrderCancelled(Map<String, Object> command) {
+        String sagaId = (String) command.get(Constant.FIELD_SAGA_ID);
+        String messageId = (String) command.get(Constant.FIELD_MESSAGE_ID);
+
+        // Idempotency check
+        if (idempotencyService.isProcessed(messageId, sagaId)) {
+            log.info(Constant.LOG_MESSAGE_ALREADY_PROCESSED, messageId, sagaId);
+            return; // Skip processing if already handled
+        }
+
+        // Extract payload first (consistent with other handlers)
+        Map<String, Object> payload = (Map<String, Object>) command.get(Constant.FIELD_PAYLOAD);
+
+        Long orderId = Long.valueOf(payload.get(Constant.FIELD_ORDER_ID).toString());
+        String reason = (String) payload.getOrDefault(Constant.FIELD_REASON, Constant.REASON_ORDER_CANCELLED_SUCCESS);
+
+        // Validate orderId and reason
+        if (validatePayload(sagaId, messageId, orderId, reason)) return;
+
+        log.info(Constant.LOG_UPDATING_ORDER_CANCELLED, orderId, sagaId);
+
+        try {
+            // Update order status to CANCELLED
+            updateOrderStatus(orderId, OrderStatus.CANCELLED, reason, sagaId);
+
+            // Add 10-second delay before sending event to saga
+            log.info(Constant.LOG_PROCESSING_CANCELLATION_WAIT, sagaId);
+            try {
+                Thread.sleep(10000); // 10 seconds delay
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                log.warn(Constant.LOG_THREAD_INTERRUPTED, sagaId);
+            }
+
+            idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.SUCCESS);
+
+            // Publish success event
+            publishOrderEvent(sagaId, orderId, Constant.EVENT_ORDER_CANCELLED, true,
+                    Constant.STATUS_DESC_CANCELLED, null);
+
+            // Log saga completion for cancellation
+            log.info(Constant.LOG_SAGA_CANCELLATION_COMPLETED, sagaId, orderId);
+
+        } catch (Exception e) {
+            log.error(Constant.LOG_ERROR_UPDATING_CANCELLED, e.getMessage(), e);
+            idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.FAILED);
+            publishOrderEvent(sagaId, orderId, Constant.EVENT_ORDER_CANCELLATION_FAILED, false,
+                    null, e.getMessage());
+
+            // Log saga failure for cancellation
+            log.error(Constant.LOG_SAGA_CANCELLATION_FAILED, sagaId, orderId, e.getMessage());
+        }
+    }
+
+    /**
      * Atomically update order status with database-level locking
      * Prevents race conditions during status transitions
      */

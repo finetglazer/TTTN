@@ -50,9 +50,12 @@ export const useCancelOrder = () => {
 
             // The API returns { success: boolean, message: string }
             // But we need to handle the actual backend response format
-            const { success, message } = response;
+            const { status, msg, data } = response;
 
-            if (success) {
+            // Check if this is a success case (either status === 1 OR message indicates success)
+            const isSuccess = status === 1 || msg.includes('Order cancellation initiated');
+
+            if (isSuccess) {
                 // Success case: Order cancellation initiated
                 setState(prev => ({
                     ...prev,
@@ -66,27 +69,28 @@ export const useCancelOrder = () => {
                     }
                 }));
 
-                // Invalidate queries to refresh order data
-                queryClient.invalidateQueries({ queryKey: ordersKeys.list() });
-                queryClient.invalidateQueries({ queryKey: ordersKeys.detail(orderId) });
-                queryClient.invalidateQueries({ queryKey: ordersKeys.status(orderId) });
-
+                // Delay query invalidation to allow notification to display properly
+                setTimeout(() => {
+                    queryClient.invalidateQueries({ queryKey: ordersKeys.list() });
+                    queryClient.invalidateQueries({ queryKey: ordersKeys.detail(orderId) });
+                    queryClient.invalidateQueries({ queryKey: ordersKeys.status(orderId) });
+                }, 5000); // Small delay to prevent immediate re-render
             } else {
                 // Handle failure cases based on message content
-                let notificationMessage = message;
+                let notificationMessage = msg;
                 let allowRetry = true;
 
                 // Check for specific failure scenarios
-                if (message.includes('Order status changed while processing') ||
-                    message.includes('Payment is being processed')) {
-                    notificationMessage = "The order status changed while processing cancellation. Please refresh and try again.";
+                if (msg.includes('Order status changed while processing') ||
+                    msg.includes('Payment is currently being processed. Please wait for payment completion before cancelling.')) {
+                    notificationMessage = "Payment is currently being processed. Please wait for payment completion before cancelling.";
                     allowRetry = true;
-                } else if (message.includes('Cannot cancel order that has already been') ||
-                    message.includes('Cancellation not allowed')) {
+                } else if (msg.includes('Cannot cancel order that has already been') ||
+                    msg.includes('Cancellation not allowed')) {
                     notificationMessage = "This order cannot be cancelled as it has already been processed or delivered.";
                     allowRetry = false;
                 } else {
-                    notificationMessage = message || "Failed to cancel order. Please try again.";
+                    notificationMessage = msg || "Failed to cancel order. Please try again.";
                     allowRetry = true;
                 }
 

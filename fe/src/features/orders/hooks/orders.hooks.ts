@@ -94,14 +94,14 @@ export const useOrderStatusPolling = (orderId: string) => {
         refetchInterval: (query) => { // Renamed 'data' to 'query' for clarity
             const status = query.state.data; // Access the data from the query state
 
-            // Stop polling if order is delivered
-            if (status === ORDER.STATUS.DELIVERED) return false;
+            // Stop polling if order is delivered or cancelled
+            if (status === ORDER.STATUS.DELIVERED || ORDER.STATUS.CANCELLED) return false;
 
             // Different intervals based on status
             if (status === ORDER.STATUS.CREATED) {
                 return 5 * 1000; // 5 seconds for active states
             }
-            return 30 * 1000; // 30 seconds for other states
+            return 5 * 1000; // 5 seconds for other states
         },
         refetchIntervalInBackground: false,
 
@@ -110,7 +110,7 @@ export const useOrderStatusPolling = (orderId: string) => {
             const status = query.state.data;
 
             // Delivered orders: NEVER refetch
-            if (status === ORDER.STATUS.DELIVERED) {
+            if (status === ORDER.STATUS.DELIVERED || ORDER.STATUS.CANCELLED) {
                 return Infinity; // ✨ Endless cache!
             }
 

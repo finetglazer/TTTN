@@ -51,6 +51,8 @@ public class OrderServiceKafkaListener {
                 case Constant.COMMAND_ORDER_UPDATE_DELIVERED:
                     orderCommandHandlerService.handleUpdateOrderDelivered(command);
                     break;
+                case Constant.COMMAND_ORDER_CANCEL:
+                    orderCommandHandlerService.handleUpdateOrderCancelled(command);
                 default:
                     log.warn(Constant.LOG_UNKNOWN_ORDER_COMMAND, commandType, sagaId);
                     break;
