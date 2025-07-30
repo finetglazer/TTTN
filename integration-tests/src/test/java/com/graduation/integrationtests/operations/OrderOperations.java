@@ -1,7 +1,6 @@
 // src/main/java/com/graduation/integrationtests/operations/OrderOperations.java
 package com.graduation.integrationtests.operations;
 
-
 import com.graduation.integrationtests.model.OrderInputModel;
 import com.graduation.integrationtests.utils.IntegrationTestUtils;
 import org.springframework.beans.factory.annotation.Value;
@@ -102,42 +101,11 @@ public class OrderOperations {
         System.out.println("Step 5: Navigating to dashboard...");
         String dashboardButtonXpath = "//button[contains(text(), 'Go to Dashboard')]";
 
-
-        // ✅ FIX: Add an explicit wait for the button to be clickable BEFORE the click action.
-        // This replaces the unreliable Thread.sleep() from the previous step.
-//        System.out.println("Waiting for dashboard button to be clickable...");
-//        IntegrationTestUtils.waitForElementToBeClickable("xpath", dashboardButtonXpath);
-//        System.out.println("Dashboard button is now clickable.");
-
         // Click "Go to Dashboard" button
         IntegrationTestUtils.clickElement("xpath", dashboardButtonXpath);
 
-        // Wait for dashboard page to load
-//        IntegrationTestUtils.waitForPageTransition("dashboard");
-
         System.out.println("✅ Successfully navigated to dashboard");
     }
-
-
-//    /**
-//     * STEP 6: Navigate to last page of dashboard
-//     * Why separate: Pagination logic can be complex and reusable
-//     */
-//    public void navigateToLastPageOfDashboard() throws Exception {
-//        System.out.println("Step 6: Navigating to the last page of the dashboard...");
-//
-//        // This XPath robustly finds the last page number button.
-//        // It works by finding the 'Next' button, then selecting the container of page numbers
-//        // that comes just before it (its preceding sibling div), and finally clicking the last button in that container.
-//        String lastPageButtonXPath = "//button[text()='Next']/preceding-sibling::div/button[last()]";
-//
-//        IntegrationTestUtils.clickElement("xpath", lastPageButtonXPath);
-//
-//        // Wait for the page to load
-//        Thread.sleep(2000);
-//
-//        System.out.println("✅ Navigated to the last page of the dashboard");
-//    }
 
     /**
      * STEP 6: Navigate to search field and fill the username
@@ -175,22 +143,131 @@ public class OrderOperations {
     }
 
     /**
-     * STEP 8: Navigate to oderDetails page
+     * STEP 8: Navigate to order details page
      * Why separate: This allows for detailed order inspection
      */
     public void navigateToOrderDetails(String orderId) {
         System.out.println("Step 8: Navigating to order details for " + orderId + "...");
 
-        // Construct the URL for order details
-        String orderDetailsUrl = baseUrl + "/orders/ORD_ " + orderId;
+//         Construct the URL for order details
+        String orderDetailsUrl = baseUrl + "/orders/" + orderId;
 
         // Navigate to the order details page
         IntegrationTestUtils.navigateToPage(orderDetailsUrl);
 
         // Wait for the page to load
-        IntegrationTestUtils.waitForPageTransition("order-details");
+//        IntegrationTestUtils.waitForPageTransition("order-details");
 
         System.out.println("✅ Successfully navigated to order details for " + orderId);
+    }
+
+    /**
+     * NEW: Wait for order to reach CREATED status
+     * This method waits for the order to be in CREATED status before attempting cancellation
+     */
+    public void waitForCreatedStatus() throws Exception {
+        System.out.println("Waiting for order status to be CREATED...");
+
+        // Wait for the CREATED status element to appear
+        String createdStatusXpath = "//span[contains(@class, 'ml-2') and contains(@class, 'font-medium') and contains(text(), 'CREATED')]";
+
+        // Use a loop with timeout to wait for the status
+        int maxWaitTime = 30; // 30 seconds timeout
+        int currentWaitTime = 0;
+
+        while (currentWaitTime < maxWaitTime) {
+            if (IntegrationTestUtils.isElementPresent("xpath", createdStatusXpath)) {
+                System.out.println("✅ Order status is now CREATED");
+                return;
+            }
+            Thread.sleep(1000);
+            currentWaitTime++;
+        }
+
+        throw new RuntimeException("❌ Order did not reach CREATED status within timeout");
+    }
+
+    /**
+     * NEW: Wait for order to reach PAYMENT CONFIRMED status
+     * This method waits for the order to be in PAYMENT CONFIRMED status before attempting cancellation
+     */
+    public void waitForPaymentConfirmedStatus() throws Exception {
+        System.out.println("Waiting for order status to be Payment: CONFIRMED...");
+
+        // Wait for the Payment: CONFIRMED status element to appear
+        String confirmedStatusXpath = "//span[contains(text(), 'CONFIRMED')]";
+        // Use a loop with timeout to wait for the status
+        int maxWaitTime = 30; // 30 seconds timeout
+        int currentWaitTime = 0;
+
+        while (currentWaitTime < maxWaitTime) {
+            if (IntegrationTestUtils.isElementPresent("xpath", confirmedStatusXpath)) {
+                System.out.println("✅ Order status is now Payment: CONFIRMED");
+                return;
+            }
+            Thread.sleep(1000);
+            currentWaitTime++;
+        }
+
+        throw new RuntimeException("❌ Order did not reach Payment: CONFIRMED status within timeout");
+    }
+
+    /**
+     * NEW: Click the Cancel Order button
+     * This method clicks the cancel order button on the order details page
+     */
+    public void clickCancelOrderButton() throws Exception {
+        System.out.println("Clicking Cancel Order button...");
+
+        // Find and click the Cancel Order button
+        String cancelButtonXpath = "//button[contains(text(), 'Cancel Order')]";
+
+        IntegrationTestUtils.clickElement("xpath", cancelButtonXpath);
+
+        // Wait for the cancellation action to process
+        Thread.sleep(2000);
+
+        System.out.println("✅ Cancel Order button clicked");
+    }
+
+    /**
+     * NEW: Verify cancellation failed notification
+     * This method checks if the "Cancellation Failed" message appears
+     */
+    public boolean verifyCancellationFailed() {
+        System.out.println("Verifying cancellation failed notification...");
+
+        String failedNotificationXpath = "//h2[@id='notification-title' and contains(text(), 'Cancellation Failed')]";
+
+        boolean isPresent = IntegrationTestUtils.isElementPresent("xpath", failedNotificationXpath);
+
+        if (isPresent) {
+            System.out.println("✅ Cancellation Failed notification displayed");
+        } else {
+            System.out.println("❌ Cancellation Failed notification not found");
+        }
+
+        return isPresent;
+    }
+
+    /**
+     * NEW: Verify cancellation initiated notification
+     * This method checks if the "Cancellation Initiated" message appears
+     */
+    public boolean verifyCancellationInitiated() {
+        System.out.println("Verifying cancellation initiated notification...");
+
+        String initiatedNotificationXpath = "//h2[@id='notification-title' and contains(text(), 'Cancellation Initiated')]";
+
+        boolean isPresent = IntegrationTestUtils.isElementPresent("xpath", initiatedNotificationXpath);
+
+        if (isPresent) {
+            System.out.println("✅ Cancellation Initiated notification displayed");
+        } else {
+            System.out.println("❌ Cancellation Initiated notification not found");
+        }
+
+        return isPresent;
     }
 
     /**
@@ -221,6 +298,86 @@ public class OrderOperations {
         }
     }
 
+    /**
+     * NEW: Complete order creation and navigation to details workflow
+     * This method creates an order and immediately navigates to its details page
+     */
+    public String executeOrderCreationAndNavigateToDetails(OrderInputModel orderData) {
+        System.out.println("🚀 Starting order creation + navigation to details workflow...");
+
+        try {
+            // Create the order first
+            String createdOrderId = executeCompleteOrderCreationWorkflow(orderData);
+
+            // Navigate to order details
+            navigateToOrderDetails(createdOrderId);
+
+            System.out.println("🎉 Order created and navigated to details successfully!");
+            return createdOrderId;
+
+        } catch (Exception e) {
+            System.err.println("❌ Order creation + navigation workflow failed: " + e.getMessage());
+            throw new RuntimeException("Order creation + navigation workflow failed", e);
+        }
+    }
+
+    /**
+     * NEW: Execute order cancellation in CREATED status
+     * This method handles the complete workflow for cancelling an order in CREATED status
+     */
+    public boolean executeCancellationInCreatedStatus(OrderInputModel orderData) {
+        System.out.println("🚀 Starting order cancellation in CREATED status workflow...");
+
+        try {
+            // Create order and navigate to details
+            String orderId = executeOrderCreationAndNavigateToDetails(orderData);
+
+            // Wait for CREATED status
+            waitForCreatedStatus();
+
+            // Click cancel button
+            clickCancelOrderButton();
+
+            // Verify cancellation failed
+            boolean cancellationFailed = verifyCancellationFailed();
+
+            System.out.println("🎉 Cancellation in CREATED status workflow completed!");
+            return cancellationFailed;
+
+        } catch (Exception e) {
+            System.err.println("❌ Cancellation in CREATED status workflow failed: " + e.getMessage());
+            throw new RuntimeException("Cancellation in CREATED status workflow failed", e);
+        }
+    }
+
+    /**
+     * NEW: Execute order cancellation in PAYMENT CONFIRMED status
+     * This method handles the complete workflow for cancelling an order in PAYMENT CONFIRMED status
+     */
+    public boolean executeCancellationInPaymentConfirmedStatus(OrderInputModel orderData) {
+        System.out.println("🚀 Starting order cancellation in PAYMENT CONFIRMED status workflow...");
+
+        try {
+            // Create order and navigate to details
+            String orderId = executeOrderCreationAndNavigateToDetails(orderData);
+
+            // Wait for Payment: CONFIRMED status
+            waitForPaymentConfirmedStatus();
+
+            // Click cancel button
+            clickCancelOrderButton();
+
+            // Verify cancellation initiated
+            boolean cancellationInitiated = verifyCancellationInitiated();
+
+            System.out.println("🎉 Cancellation in PAYMENT CONFIRMED status workflow completed!");
+            return cancellationInitiated;
+
+        } catch (Exception e) {
+            System.err.println("❌ Cancellation in PAYMENT CONFIRMED status workflow failed: " + e.getMessage());
+            throw new RuntimeException("Cancellation in PAYMENT CONFIRMED status workflow failed", e);
+        }
+    }
 
     /**
      * Utility method to verify order appears in dashboard
@@ -277,5 +434,4 @@ public class OrderOperations {
         // accessibility practice for error messages.
         return IntegrationTestUtils.isElementPresent("xpath", "//div[@role='alert']");
     }
-
 }

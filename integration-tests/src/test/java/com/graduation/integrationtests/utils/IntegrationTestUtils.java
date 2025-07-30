@@ -16,7 +16,7 @@ import java.time.Duration;
 public class IntegrationTestUtils {
 
     @Value("${test.timeout:15}")
-    private static int WAIT_TIMEOUT_SECONDS;
+    private static int WAIT_TIMEOUT_SECONDS = 15;
 
     /**
      * Navigate to a specific page and wait for it to load
@@ -90,6 +90,102 @@ public class IntegrationTestUtils {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /**
+     * NEW: Wait for element with specific text to be present
+     * This is useful for waiting for status changes or notifications
+     */
+    public static boolean waitForElementWithText(String locatorType, String locatorValue, String expectedText, int timeoutSeconds) {
+        try {
+            WebDriver driver = WebDriverUtils.getDriver();
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds));
+
+            By locator = getLocator(locatorType, locatorValue);
+
+            // Wait for element to be present and contain the expected text
+            wait.until(ExpectedConditions.and(
+                    ExpectedConditions.presenceOfElementLocated(locator),
+                    ExpectedConditions.textToBePresentInElementLocated(locator, expectedText)
+            ));
+
+            return true;
+        } catch (TimeoutException e) {
+            System.out.println("⚠️ Element with text '" + expectedText + "' not found within " + timeoutSeconds + " seconds");
+            return false;
+        }
+    }
+
+    /**
+     * NEW: Wait for notification to appear with specific title
+     * Specifically designed for waiting for cancellation notifications
+     */
+    public static boolean waitForNotificationWithTitle(String expectedTitle, int timeoutSeconds) {
+        String notificationXpath = "//h2[@id='notification-title' and contains(text(), '" + expectedTitle + "')]";
+        return waitForElementToBeVisible("xpath", notificationXpath, timeoutSeconds);
+    }
+
+    /**
+     * NEW: Wait for element to be visible with custom timeout
+     */
+    public static boolean waitForElementToBeVisible(String locatorType, String locatorValue, int timeoutSeconds) {
+        try {
+            WebDriver driver = WebDriverUtils.getDriver();
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds));
+
+            By locator = getLocator(locatorType, locatorValue);
+            wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
+
+            return true;
+        } catch (TimeoutException e) {
+            System.out.println("⚠️ Element not visible within " + timeoutSeconds + " seconds: " + locatorValue);
+            return false;
+        }
+    }
+
+    /**
+     * NEW: Wait for order status to change to specific value
+     * This method continuously checks for status changes until the expected status appears
+     */
+    public static boolean waitForOrderStatus(String expectedStatus, int timeoutSeconds) {
+        System.out.println("Waiting for order status: " + expectedStatus);
+
+        String statusXpath;
+        switch (expectedStatus.toUpperCase()) {
+            case "CREATED":
+                statusXpath = "//span[contains(@class, 'ml-2') and contains(@class, 'font-medium') and contains(text(), 'CREATED')]";
+                break;
+            case "PAYMENT: CONFIRMED":
+                statusXpath = "//span[contains(@class, 'bg-green-100') and contains(@class, 'text-green-800') and contains(text(), 'Payment: CONFIRMED')]";
+                break;
+            default:
+                // Generic status check
+                statusXpath = "//span[contains(text(), '" + expectedStatus + "')]";
+                break;
+        }
+
+        return waitForElementToBeVisible("xpath", statusXpath, timeoutSeconds);
+    }
+
+    /**
+     * NEW: Enhanced method to check for cancellation result
+     * Returns the type of cancellation result found
+     */
+    public static String getCancellationResult(int timeoutSeconds) {
+        System.out.println("Checking for cancellation result...");
+
+        // Check for both possible outcomes
+        boolean failedFound = waitForNotificationWithTitle("Cancellation Failed", timeoutSeconds / 2);
+        if (failedFound) {
+            return "FAILED";
+        }
+
+        boolean initiatedFound = waitForNotificationWithTitle("Cancellation Initiated", timeoutSeconds / 2);
+        if (initiatedFound) {
+            return "INITIATED";
+        }
+
+        return "NONE";
     }
 
     /**
@@ -233,5 +329,33 @@ public class IntegrationTestUtils {
         By locator = getLocator(locatorType, locatorValue);
         // findElements returns a list of all matching elements. The size of the list is our count.
         return driver.findElements(locator).size();
+    }
+
+    /**
+     * NEW: Smart wait for any of multiple conditions to be met
+     * Useful when waiting for one of several possible outcomes
+     */
+    public static String waitForAnyOfConditions(String[] xpathConditions, String[] conditionNames, int timeoutSeconds) {
+        WebDriver driver = WebDriverUtils.getDriver();
+        long endTime = System.currentTimeMillis() + (timeoutSeconds * 1000);
+
+        while (System.currentTimeMillis() < endTime) {
+            for (int i = 0; i < xpathConditions.length; i++) {
+                if (isElementPresent("xpath", xpathConditions[i])) {
+                    System.out.println("✅ Condition met: " + conditionNames[i]);
+                    return conditionNames[i];
+                }
+            }
+
+            try {
+                Thread.sleep(500); // Check every 500ms
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+
+        System.out.println("⚠️ No conditions met within timeout");
+        return "TIMEOUT";
     }
 }

@@ -74,7 +74,7 @@ export const useCancelOrder = () => {
                     queryClient.invalidateQueries({ queryKey: ordersKeys.list() });
                     queryClient.invalidateQueries({ queryKey: ordersKeys.detail(orderId) });
                     queryClient.invalidateQueries({ queryKey: ordersKeys.status(orderId) });
-                }, 5000); // Small delay to prevent immediate re-render
+                }, 10000); // Small delay to prevent immediate re-render
             } else {
                 // Handle failure cases based on message content
                 let notificationMessage = msg;
