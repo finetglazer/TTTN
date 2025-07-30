@@ -28,6 +28,7 @@ public class OrderCommandHandlerService {
     private final OrderRepository orderRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final IdempotencyService idempotencyService;
+    private final RedisLockService redisLockService;
 
     /**
      * Create a new order and trigger saga
@@ -292,42 +293,31 @@ public class OrderCommandHandlerService {
         }
     }
 
-    @Transactional
-    public boolean cancelOrderDirectly(Long orderId, OrderStatus expectedStatus, String reason) {
+    /**
+     * Check if payment is currently being processed for the given order
+     */
+    public boolean isPaymentInProgress(String paymentLockKey) {
         try {
-            // Atomically update from CREATED to CANCELLED
-            boolean updatedRows = updateOrderStatusAtomically(
-                    orderId,
-                    expectedStatus,
-                    OrderStatus.CANCELLED,
-                    "Direct cancellation: " + reason,
-                    "DIRECT_CANCELLATION"
-            );
-
-            if (updatedRows) {
-                // Optionally publish a simple cancellation event (not for saga)
-                publishOrderCancelledEvent(orderId, reason, "DIRECT");
-                return true;
-            }
-
-            return false;
+            return redisLockService.isLocked(paymentLockKey);
         } catch (Exception e) {
-            log.error("Failed to cancel order directly: orderId={}", orderId, e);
-            return false;
+            log.error("Error checking payment lock status: key={}", paymentLockKey, e);
+            // In case of error, assume payment might be in progress to be safe
+            return true;
         }
     }
 
-    private void publishOrderCancelledEvent(Long orderId, String reason, String cancellationType) {
-        Map<String, Object> event = Map.of(
-                "orderId", orderId,
-                "reason", reason,
-                "type", "ORDER_CANCELLED",
-                "cancellationType", cancellationType,
-                "timestamp", System.currentTimeMillis()
-        );
-
-        kafkaTemplate.send("order-events", event);
+    /**
+     * Get the current payment lock holder information
+     */
+    public String getPaymentLockHolder(String paymentLockKey) {
+        try {
+            return redisLockService.getLockHolder(paymentLockKey);
+        } catch (Exception e) {
+            log.error("Error getting payment lock holder: key={}", paymentLockKey, e);
+            return "unknown";
+        }
     }
+
 
     /**
      * Initiate order cancellation by publishing cancel request event to Saga

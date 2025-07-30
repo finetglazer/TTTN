@@ -101,7 +101,8 @@ public class Constant {
     public static final String ERROR_CAN_ONLY_CONFIRM_CREATED = "Order can only be confirmed from CREATED status, current: %s";
     public static final String ERROR_CAN_ONLY_DELIVER_CONFIRMED = "Order can only be delivered from CONFIRMED status, current: %s";
     public static final String ERROR_INVALID_ORDER_STATUS_CANCELLATION_PENDING = "Order is currently being cancelled";
-
+    public static final String ERROR_PAYMENT_IN_PROGRESS = "Payment is currently being processed. Please wait for payment completion before cancelling.";
+    public static final String ERROR_CANCELLATION_NOT_ALLOWED_PAYMENT = "Order cancellation not allowed";
     // ===================== DEFAULT REASONS =====================
     public static final String REASON_ORDER_CONFIRMED = "Order confirmed for processing";
     public static final String REASON_ORDER_DELIVERED = "Order successfully delivered";
@@ -168,6 +169,8 @@ public class Constant {
     public static final String LOG_ORDER_EVENT_SUCCESS = "Order event success: {}";
     public static final String LOG_ORDER_EVENT_FAILURE = "Order event failure: {}";
     public static final String LOG_ERROR_PUBLISHING_EVENT = "Error publishing order event: {}";
+    public static final String LOG_PAYMENT_LOCK_CHECK = "Checking payment lock for order cancellation: orderId={}, lockKey={}";
+    public static final String LOG_PAYMENT_IN_PROGRESS = "Payment in progress detected: orderId={}, lockHolder={}";
 
     // ===================== BUSINESS ERROR MESSAGES =====================
     public static final String ERROR_ORDER_NOT_FOUND_ID = "Order not found: %s";

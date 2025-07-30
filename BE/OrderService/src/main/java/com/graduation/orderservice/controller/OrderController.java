@@ -9,6 +9,7 @@ import com.graduation.orderservice.payload.response.OrderStatusResponse;
 import com.graduation.orderservice.repository.OrderRepository;
 import com.graduation.orderservice.service.OrderCommandHandlerService;
 import com.graduation.orderservice.service.OrderService;
+import com.graduation.orderservice.service.RedisLockService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -128,16 +129,11 @@ public class OrderController {
      */
     @PostMapping("/{orderId}/cancel")
     public ResponseEntity<?> cancelOrder(@PathVariable Long orderId,
-                                         @RequestParam(required = false) String reason) {
+            @RequestParam(required = false) String reason) {
+
         try {
-            log.info(Constant.LOG_PROCESSING_CANCEL_ORDER_COMMAND, orderId);
+            log.info("Received cancellation request for order: {}", orderId);
 
-            if (orderId == null || orderId <= 0) {
-                return ResponseEntity.ok(new BaseResponse<>(0,
-                        "Invalid order ID", "Order ID must be a positive number"));
-            }
-
-            // Find the order (without lock first, for validation)
             Optional<Order> optionalOrder = orderRepository.findById(orderId);
             if (optionalOrder.isEmpty()) {
                 return ResponseEntity.ok(new BaseResponse<>(0,
@@ -166,12 +162,32 @@ public class OrderController {
                         statusMessage));
             }
 
-            // Atomically transition to CANCELLATION_PENDING
+            // **NEW: Check if payment is currently being processed**
+            if (currentStatus == OrderStatus.CREATED) {
+                String paymentLockKey = RedisLockService.buildPaymentLockKey(orderId.toString());
+
+                log.debug(Constant.LOG_PAYMENT_LOCK_CHECK, orderId, paymentLockKey);
+
+                if (orderCommandHandlerService.isPaymentInProgress(paymentLockKey)) {
+                    String lockHolder = orderCommandHandlerService.getPaymentLockHolder(paymentLockKey);
+
+                    log.warn(Constant.LOG_PAYMENT_IN_PROGRESS, orderId, lockHolder);
+
+                    Map<String, Object> errorData = Map.of(
+                            Constant.FIELD_ORDER_ID, orderId,
+                            Constant.FIELD_ORDER_STATUS, currentStatus.name().toLowerCase(),
+                            "retryAfter", 30 // Suggest retry after 30 seconds
+                    );
+
+                    return ResponseEntity.ok(new BaseResponse<>(0,
+                            Constant.ERROR_PAYMENT_IN_PROGRESS,
+                            errorData));
+                }
+            }
+
             String cancelReason = reason != null ? reason : "User cancellation request";
-            // **KEY CHANGE: Handle CREATED orders directly**
 
-
-            // For CONFIRMED orders - use saga orchestration
+            // Atomically transition to CANCELLATION_PENDING
             boolean statusUpdated = orderCommandHandlerService.updateOrderStatusAtomically(
                     orderId,
                     currentStatus,
@@ -186,7 +202,7 @@ public class OrderController {
                         "Order status changed while processing cancellation. Please try again."));
             }
 
-            // Initiate saga-based cancellation for complex orders
+            // Initiate saga-based cancellation
             Order updatedOrder = orderRepository.findById(orderId).orElseThrow();
             orderCommandHandlerService.initiateCancellation(updatedOrder, cancelReason);
 
@@ -200,7 +216,6 @@ public class OrderController {
             return ResponseEntity.ok(new BaseResponse<>(1,
                     Constant.ORDER_CANCELLATION_INITIATED,
                     responseData));
-
 
         } catch (Exception e) {
             log.error("Error processing cancellation request for order: {}", orderId, e);

@@ -35,5 +35,5 @@ POST http://localhost:8080/api/orders/123/cancel?reason=Changed mind
 POST http://localhost:8080/api/orders/123/cancel
 
 ### Test cancel
-POST http://localhost:8080/api/orders/167/cancel?reason="It is too bad!"
+POST http://localhost:8080/api/orders/173/cancel?reason="It is too bad!"
 
