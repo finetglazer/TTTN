@@ -15,11 +15,11 @@ interface CancelOrderState {
     };
 }
 
-interface CancelOrderResponse {
+interface CancelOrderApiResponse { // Renamed to avoid confusion with the internal response object
     success: boolean;
     message: string;
     status: number;
-    data?: object;
+    data?: object; // Use unknown instead of any for better type safety
 }
 
 export const useCancelOrder = () => {
@@ -107,20 +107,24 @@ export const useCancelOrder = () => {
                 }));
             }
 
-        } catch (error: any) {
+        } catch (error: unknown) { // Use unknown for caught errors
             // Network or other errors
             console.error('Cancel order error:', error);
 
             let errorMessage = "Network error occurred. Please check your connection and try again.";
 
-            // Handle specific error cases
-            if (error.response?.status === 404) {
-                errorMessage = "Order not found. Please refresh the page.";
-            } else if (error.response?.status >= 500) {
-                errorMessage = "Server error occurred. Please try again later.";
-            } else if (error.message) {
+            // Refine error handling for 'error'
+            if (error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'status' in error.response) {
+                const responseError = error.response as { status?: number }; // Type assertion for response
+                if (responseError.status === 404) {
+                    errorMessage = "Order not found. Please refresh the page.";
+                } else if (responseError.status && responseError.status >= 500) {
+                    errorMessage = "Server error occurred. Please try again later.";
+                }
+            } else if (error instanceof Error) { // Check if error is an instance of Error
                 errorMessage = error.message;
             }
+
 
             setState(prev => ({
                 ...prev,
