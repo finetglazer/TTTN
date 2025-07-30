@@ -122,26 +122,6 @@ public class OrderCommandHandlerService {
     }
 
     /**
-     * Cancel order (compensation step)
-     */
-    @Transactional
-    public void cancelOrder(Long orderId, String reason, String sagaId) {
-        log.info(Constant.LOG_CANCELLING_ORDER, orderId, sagaId);
-
-        // Use a custom query to fetch with histories
-        Optional<Order> optionalOrder = orderRepository.findByIdWithHistories(orderId);
-        if (optionalOrder.isEmpty()) {
-            throw new RuntimeException(String.format(Constant.ERROR_ORDER_NOT_FOUND_ID, orderId));
-        }
-
-        Order order = optionalOrder.get();
-        order.cancel(reason, Constant.ACTOR_SAGA_COMPENSATION);
-
-        orderRepository.save(order);
-        log.info(Constant.LOG_ORDER_CANCELLED_SUCCESS, orderId);
-    }
-
-    /**
      * Handle order update confirmed command
      */
     public void handleUpdateOrderConfirmed(Map<String, Object> command) {
@@ -251,46 +231,6 @@ public class OrderCommandHandlerService {
             return true;
         }
         return false;
-    }
-
-    /**
-     * Handle order cancellation command
-     */
-    public void handleCancelOrder(Map<String, Object> command) {
-        //Idempotency check
-        String sagaId = (String) command.get(Constant.FIELD_SAGA_ID);
-        String messageId = (String) command.get(Constant.FIELD_MESSAGE_ID);
-        if (idempotencyService.isProcessed(messageId, sagaId)) {
-            log.info(Constant.LOG_MESSAGE_ALREADY_PROCESSED, messageId, sagaId);
-            return; // Skip processing if already handled
-        }
-
-        // Extract payload first
-        Map<String, Object> payload = (Map<String, Object>) command.get(Constant.FIELD_PAYLOAD);
-
-        Long orderId = Long.valueOf(payload.get(Constant.FIELD_ORDER_ID).toString());
-        String reason = (String) payload.getOrDefault(Constant.FIELD_REASON, Constant.REASON_ORDER_CANCELLED_SAGA);
-
-        try {
-            // Validate orderId and reason
-            if (validatePayload(sagaId, messageId, orderId, reason)) return;
-            // Proceed with cancellation
-
-            // TODO: Inject OrderService and call cancelOrder
-            cancelOrder(orderId, reason, sagaId);
-
-            idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.SUCCESS);
-            // Publish success event
-            publishOrderEvent(sagaId, orderId, Constant.EVENT_ORDER_CANCELLED, true,
-                    Constant.STATUS_DESC_CANCELLED, null);
-
-        } catch (Exception e) {
-            log.error(Constant.LOG_ERROR_CANCELLING_ORDER, e.getMessage(), e);
-
-            idempotencyService.recordProcessing(messageId, sagaId, ProcessedMessage.ProcessStatus.FAILED);
-            publishOrderEvent(sagaId, orderId, Constant.EVENT_ORDER_CANCELLATION_FAILED, false,
-                    null, e.getMessage());
-        }
     }
 
     /**

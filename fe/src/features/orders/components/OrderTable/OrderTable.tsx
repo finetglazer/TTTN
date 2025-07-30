@@ -47,14 +47,14 @@ function OrderRowActions({ order }: { order: OrdersDashboardDisplay }) {
             >
                 View Details
             </button>
-            {order.orderStatus === ORDER.STATUS.CREATED && (
-                <button
-                    onClick={handleCancel}
-                    className="text-red-600 hover:text-red-800 text-sm"
-                >
-                    Cancel
-                </button>
-            )}
+            {/*{order.orderStatus === ORDER.STATUS.CREATED && (*/}
+            {/*    <button*/}
+            {/*        onClick={handleCancel}*/}
+            {/*        className="text-red-600 hover:text-red-800 text-sm"*/}
+            {/*    >*/}
+            {/*        Cancel*/}
+            {/*    </button>*/}
+            {/*)}*/}
         </div>
     );
 }
@@ -130,6 +130,7 @@ function TableHeader() {
 }
 
 // Sub-component for pagination
+// Enhanced Pagination Component with Smart Page Range
 function Pagination({
                         currentPage,
                         totalPages,
@@ -141,40 +142,171 @@ function Pagination({
 }) {
     if (totalPages <= 1) return null;
 
+    // Configuration for pagination display
+    const PAGES_TO_SHOW = 5; // Number of page buttons to show around current page
+    const ALWAYS_SHOW_FIRST_LAST = true; // Always show first and last page
+
+    // Helper function to generate page numbers to display
+    const getPageNumbers = () => {
+        const pages = [];
+
+        // If total pages is small, show all pages
+        if (totalPages <= PAGES_TO_SHOW + 2) {
+            return Array.from({ length: totalPages }, (_, i) => i + 1);
+        }
+
+        // Always include first page
+        if (ALWAYS_SHOW_FIRST_LAST) {
+            pages.push(1);
+        }
+
+        // Calculate the range around current page
+        const startPage = Math.max(2, currentPage - Math.floor(PAGES_TO_SHOW / 2));
+        const endPage = Math.min(totalPages - 1, startPage + PAGES_TO_SHOW - 1);
+
+        // Add ellipsis after first page if needed
+        if (startPage > 2) {
+            pages.push('ellipsis-start');
+        }
+
+        // Add pages in the middle range
+        for (let i = startPage; i <= endPage; i++) {
+            if (i !== 1 && i !== totalPages) { // Don't duplicate first/last pages
+                pages.push(i);
+            }
+        }
+
+        // Add ellipsis before last page if needed
+        if (endPage < totalPages - 1) {
+            pages.push('ellipsis-end');
+        }
+
+        // Always include last page
+        if (ALWAYS_SHOW_FIRST_LAST && totalPages > 1) {
+            pages.push(totalPages);
+        }
+
+        return pages;
+    };
+
+    const pageNumbers = getPageNumbers();
+
+    // Button styling helper
+    const getButtonStyle = (page: number) => ({
+        backgroundColor: currentPage === page ? COLORS.PRIMARY_GOLD : undefined,
+        color: currentPage === page ? COLORS.DEEP_CHARCOAL : undefined
+    });
+
+    const getButtonClassName = (page: number) =>
+        `px-3 py-2 rounded-lg text-sm font-medium transition-colors min-w-[40px] ${
+            currentPage === page
+                ? 'text-black'
+                : 'text-[#718096] hover:bg-gray-100'
+        }`;
+
     return (
         <div className="flex items-center justify-center space-x-2 mt-6 pt-6 border-t">
+            {/* Previous Button */}
             <button
                 onClick={() => onPageChange(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
-                className="pagination-btn btn-ghost disabled:opacity-50"
+                className="pagination-btn btn-ghost disabled:opacity-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             >
                 Previous
             </button>
 
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <button
-                    key={page}
-                    onClick={() => onPageChange(page)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        currentPage === page
-                            ? `text-black`
-                            : 'text-[#718096] hover:bg-gray-100'
-                    }`}
-                    style={{
-                        backgroundColor: currentPage === page ? COLORS.PRIMARY_GOLD : undefined,
-                        color: currentPage === page ? COLORS.DEEP_CHARCOAL : undefined
-                    }}
-                >
-                    {page}
-                </button>
-            ))}
+            {/* Page Numbers */}
+            <div className="flex items-center space-x-1">
+                {pageNumbers.map((page, index) => {
+                    if (typeof page === 'string' && page.startsWith('ellipsis')) {
+                        return (
+                            <span
+                                key={page}
+                                className="px-2 py-2 text-[#718096] text-sm"
+                            >
+                                ...
+                            </span>
+                        );
+                    }
 
+                    const pageNumber = page as number;
+                    return (
+                        <button
+                            key={pageNumber}
+                            onClick={() => onPageChange(pageNumber)}
+                            className={getButtonClassName(pageNumber)}
+                            style={getButtonStyle(pageNumber)}
+                        >
+                            {pageNumber}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Next Button */}
             <button
                 onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
-                className="pagination-btn btn-ghost disabled:opacity-50"            >
+                className="pagination-btn btn-ghost disabled:opacity-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
                 Next
             </button>
+        </div>
+    );
+}
+
+// Optional: Enhanced version with jump-to-page functionality
+function PaginationWithJump({
+                                currentPage,
+                                totalPages,
+                                onPageChange
+                            }: {
+    currentPage: number;
+    totalPages: number;
+    onPageChange: (page: number) => void;
+}) {
+    const [jumpPage, setJumpPage] = useState('');
+
+    const handleJumpSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const page = parseInt(jumpPage);
+        if (page >= 1 && page <= totalPages) {
+            onPageChange(page);
+            setJumpPage('');
+        }
+    };
+
+    return (
+        <div className="flex flex-col items-center space-y-4 mt-6 pt-6 border-t">
+            {/* Main Pagination */}
+            <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={onPageChange}
+            />
+
+            {/* Jump to Page (for very large datasets) */}
+            {totalPages > 20 && (
+                <form onSubmit={handleJumpSubmit} className="flex items-center space-x-2 text-sm">
+                    <span className="text-[#718096]">Go to page:</span>
+                    <input
+                        type="number"
+                        min="1"
+                        max={totalPages}
+                        value={jumpPage}
+                        onChange={(e) => setJumpPage(e.target.value)}
+                        className="w-16 px-2 py-1 border border-gray-300 rounded text-center"
+                        placeholder="1"
+                    />
+                    <span className="text-[#718096]">of {totalPages}</span>
+                    <button
+                        type="submit"
+                        className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-[#718096] hover:text-black transition-colors"
+                    >
+                        Go
+                    </button>
+                </form>
+            )}
         </div>
     );
 }
