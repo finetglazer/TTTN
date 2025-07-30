@@ -98,10 +98,6 @@ export function PaymentInformationCard({
     };
 
 
-    const shouldShowRetryButton = () => {
-        return payment.status === PAYMENT.STATUS.FAILED || payment.status === PAYMENT.STATUS.DECLINED;
-    };
-
     const formatPaymentMethod = (method: string) => {
         // Capitalize and format payment method
         return method.split('_').map(word =>
@@ -135,15 +131,15 @@ export function PaymentInformationCard({
                             </span>
                         </div>
 
-                        {shouldShowRetryButton() && (
-                            <button
-                                onClick={onRetryPayment}
-                                className="flex items-center space-x-2 px-4 py-2 bg-[#f6d55c] hover:bg-[#e6c53f] text-[#1a1a1a] rounded-lg font-medium transition-colors duration-200"
-                            >
-                                <RefreshCw className="w-4 h-4" />
-                                <span>Retry Payment</span>
-                            </button>
-                        )}
+                        {/*{shouldShowRetryButton() && (*/}
+                        {/*    <button*/}
+                        {/*        onClick={onRetryPayment}*/}
+                        {/*        className="flex items-center space-x-2 px-4 py-2 bg-[#f6d55c] hover:bg-[#e6c53f] text-[#1a1a1a] rounded-lg font-medium transition-colors duration-200"*/}
+                        {/*    >*/}
+                        {/*        <RefreshCw className="w-4 h-4" />*/}
+                        {/*        /!*<span>Retry Payment</span>*!/*/}
+                        {/*    </button>*/}
+                        {/*)}*/}
                     </div>
 
                     {/* Failure reason if applicable */}

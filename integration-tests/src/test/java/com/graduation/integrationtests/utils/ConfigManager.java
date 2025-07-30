@@ -7,7 +7,7 @@ import java.util.Properties;
 
 public class ConfigManager {
     private static Properties properties = new Properties();
-    private static final String CONFIG_FILE = "application.properties";
+    private static final String CONFIG_FILE = "application-test.properties";
 
     static {
         loadProperties();

@@ -20,7 +20,7 @@ public class WebDriverUtils {
             case "chrome":
                 WebDriverManager.chromedriver().setup();
                 ChromeOptions chromeOptions = new ChromeOptions();
-                chromeOptions.addArguments("--headless"); // Remove for visible browser
+//                chromeOptions.addArguments("--headless"); // Remove for visible browser
                 chromeOptions.addArguments("--disable-gpu");
                 chromeOptions.addArguments("--window-size=1920,1080");
                 driver = new ChromeDriver(chromeOptions);

@@ -1,10 +1,16 @@
-// fe/src/features/orders/components/OrdersTable/OrdersTable.tsx
 'use client';
 
 import { useState, useMemo } from 'react';
 import { ORDER, COLORS } from '@/core/config/constants';
 import {OrdersDashboardDisplay, OrdersTableProps} from '@/features/orders/types/orders.dashboard.types';
 import {useRouter} from "next/navigation";
+
+// Define types for sorting functionality
+type SortableKeys = 'orderId' | 'userName' | 'totalAmount' | 'createdAt';
+type SortConfig = {
+    key: SortableKeys | null;
+    direction: 'ascending' | 'descending';
+};
 
 // Sub-component for status badge
 
@@ -48,12 +54,12 @@ function OrderRowActions({ order }: { order: OrdersDashboardDisplay }) {
                 View Details
             </button>
             {/*{order.orderStatus === ORDER.STATUS.CREATED && (*/}
-            {/*    <button*/}
-            {/*        onClick={handleCancel}*/}
-            {/*        className="text-red-600 hover:text-red-800 text-sm"*/}
-            {/*    >*/}
-            {/*        Cancel*/}
-            {/*    </button>*/}
+            {/* <button*/}
+            {/* onClick={handleCancel}*/}
+            {/* className="text-red-600 hover:text-red-800 text-sm"*/}
+            {/* >*/}
+            {/* Cancel*/}
+            {/* </button>*/}
             {/*)}*/}
         </div>
     );
@@ -101,27 +107,46 @@ function OrderRow({ order, index }: { order: OrdersDashboardDisplay; index: numb
     );
 }
 
-// Sub-component for table header
-function TableHeader() {
+// Sub-component for table header with sorting
+function TableHeader({
+                         onSort,
+                         sortConfig,
+                     }: {
+    onSort: (key: SortableKeys) => void;
+    sortConfig: SortConfig;
+}) {
+    const renderSortArrow = (columnKey: SortableKeys) => {
+        if (sortConfig.key !== columnKey) {
+            return null; // No icon if not the active sort column
+        }
+        if (sortConfig.direction === 'ascending') {
+            return <span className="ml-1">▲</span>;
+        }
+        return <span className="ml-1">▼</span>;
+    };
+
+    const headerBaseClasses = "px-6 py-4 text-left text-sm font-medium uppercase tracking-wider";
+    const sortableHeaderClasses = `${headerBaseClasses} cursor-pointer hover:bg-[#3a4a5b] transition-colors`;
+
     return (
         <thead className="bg-[#2d3748] text-white">
         <tr>
-            <th className="px-6 py-4 text-left text-sm font-medium uppercase tracking-wider">
-                Order
+            <th className={sortableHeaderClasses} onClick={() => onSort('orderId')}>
+                Order {renderSortArrow('orderId')}
             </th>
-            <th className="px-6 py-4 text-left text-sm font-medium uppercase tracking-wider">
-                Customer
+            <th className={sortableHeaderClasses} onClick={() => onSort('userName')}>
+                Customer {renderSortArrow('userName')}
             </th>
-            <th className="px-6 py-4 text-left text-sm font-medium uppercase tracking-wider">
-                Amount
+            <th className={sortableHeaderClasses} onClick={() => onSort('totalAmount')}>
+                Amount {renderSortArrow('totalAmount')}
             </th>
-            <th className="px-6 py-4 text-left text-sm font-medium uppercase tracking-wider">
+            <th className={headerBaseClasses}>
                 Status
             </th>
-            <th className="px-6 py-4 text-left text-sm font-medium uppercase tracking-wider">
-                Date
+            <th className={sortableHeaderClasses} onClick={() => onSort('createdAt')}>
+                Date {renderSortArrow('createdAt')}
             </th>
-            <th className="px-6 py-4 text-left text-sm font-medium uppercase tracking-wider">
+            <th className={headerBaseClasses}>
                 Actions
             </th>
         </tr>
@@ -373,24 +398,52 @@ function ErrorState({
     );
 }
 
-// Main OrdersTable component
+// Main OrdersTable component with sorting
 export default function OrdersTable({
                                         orders,
                                         isLoading = false,
-                                        error = null
+                                        error = null,
                                     }: OrdersTableProps) {
     const [currentPage, setCurrentPage] = useState(1);
+    const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: 'ascending' });
     const ordersPerPage = ORDER.PAGINATION.ORDERS_PER_PAGE;
 
-    // Pagination calculations
-    const totalPages = Math.ceil(orders.length / ordersPerPage);
-    const startIndex = (currentPage - 1) * ordersPerPage;
-    const paginatedOrders = orders.slice(startIndex, startIndex + ordersPerPage);
+    const handleRequestSort = (key: SortableKeys) => {
+        let direction: 'ascending' | 'descending' = 'ascending';
+        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
 
-    // Reset pagination when orders change
+    const sortedOrders = useMemo(() => {
+        const sortableItems = [...orders];
+        if (sortConfig.key) {
+            sortableItems.sort((a, b) => {
+                const aValue = a[sortConfig.key!];
+                const bValue = b[sortConfig.key!];
+
+                if (aValue < bValue) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (aValue > bValue) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        return sortableItems;
+    }, [orders, sortConfig]);
+
+    // Pagination calculations
+    const totalPages = Math.ceil(sortedOrders.length / ordersPerPage);
+    const startIndex = (currentPage - 1) * ordersPerPage;
+    const paginatedOrders = sortedOrders.slice(startIndex, startIndex + ordersPerPage);
+
+    // Reset pagination when orders or sorting changes
     useMemo(() => {
         setCurrentPage(1);
-    }, [orders.length]);
+    }, [orders.length, sortConfig]);
 
     const handleRetry = () => {
         window.location.reload();
@@ -415,7 +468,7 @@ export default function OrdersTable({
         <div className="card">
             <div>
                 <table className="w-full">
-                    <TableHeader />
+                    <TableHeader onSort={handleRequestSort} sortConfig={sortConfig} />
                     <tbody className="bg-white divide-y divide-gray-200">
                     {paginatedOrders.map((order, index) => (
                         <OrderRow
@@ -436,6 +489,7 @@ export default function OrdersTable({
         </div>
     );
 }
+
 
 // Export pagination utilities
 export const calculatePagination = (
