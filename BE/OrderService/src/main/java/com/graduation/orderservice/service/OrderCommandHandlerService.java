@@ -5,6 +5,7 @@ import com.graduation.orderservice.model.Order;
 import com.graduation.orderservice.model.OrderStatus;
 import com.graduation.orderservice.model.ProcessedMessage;
 import com.graduation.orderservice.repository.OrderRepository;
+import com.graduation.orderservice.utils.SagaIdGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -38,17 +39,19 @@ public class OrderCommandHandlerService {
         log.info(Constant.LOG_CREATING_ORDER, userId, totalAmount);
 
         try {
-            /*
-            We had checked data from the request successfully! => No need here
-             */
-            // Create the order
-            Order order = Order.createOrder(userId, userEmail, userName, orderDescription, totalAmount, shippingAddress);
+            // Generate sagaId immediately when creating the order
+            String sagaId = SagaIdGenerator.generateForType("ORDER_PURCHASE");
+
+            // Create the order with sagaId
+            Order order = Order.createOrder(userId, userEmail, userName,
+                    orderDescription, totalAmount,
+                    shippingAddress, sagaId);
 
             // Save to database
             Order savedOrder = orderRepository.save(order);
             log.info(Constant.LOG_ORDER_CREATED_SUCCESS, savedOrder.getId());
 
-            // Publish event to trigger saga
+            // Publish event to trigger saga (saga will use existing sagaId)
             publishOrderCreatedEvent(savedOrder);
 
             return savedOrder;
@@ -70,7 +73,7 @@ public class OrderCommandHandlerService {
             event.put(Constant.FIELD_TYPE, Constant.EVENT_ORDER_CREATED);
             event.put(Constant.FIELD_TIMESTAMP, System.currentTimeMillis());
 
-            // Order data for saga
+            // Order data for saga (including sagaId)
             event.put(Constant.FIELD_ORDER_ID, order.getId());
             event.put(Constant.FIELD_USER_ID, order.getUserId());
             event.put(Constant.FIELD_USER_EMAIL, order.getUserEmail());
@@ -79,6 +82,7 @@ public class OrderCommandHandlerService {
             event.put(Constant.FIELD_TOTAL_AMOUNT, order.getTotalAmount());
             event.put(Constant.FIELD_ORDER_STATUS, order.getStatus().name());
             event.put(Constant.FIELD_CREATED_AT, order.getCreatedAt().toString());
+            event.put(Constant.FIELD_SAGA_ID, order.getSagaId()); // Include sagaId
 
             // Publish to saga events topic
             kafkaTemplate.send(Constant.TOPIC_ORDER_EVENTS, order.getId().toString(), event);
@@ -87,8 +91,6 @@ public class OrderCommandHandlerService {
 
         } catch (Exception e) {
             log.error(Constant.LOG_FAILED_PUBLISH_ORDER_CREATED, order.getId(), e);
-            // Don't fail the order creation if event publishing fails
-            // In production, you might want to retry or use a more robust mechanism
         }
     }
 

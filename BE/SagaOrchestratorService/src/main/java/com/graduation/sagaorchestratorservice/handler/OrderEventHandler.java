@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.Map;
 
 @Slf4j
@@ -40,21 +41,19 @@ public class OrderEventHandler {
      * Handle ORDER_CREATED event to start new saga
      */
     private void handleOrderCreatedEvent(Map<String, Object> event) {
+        // Extract order data
+        String userId = (String) event.get(Constant.FIELD_USER_ID);
+        Long orderId = Long.valueOf(event.get(Constant.FIELD_ORDER_ID).toString());
+        String userEmail = (String) event.get(Constant.FIELD_USER_EMAIL);
+        String userName = (String) event.get(Constant.FIELD_USER_NAME);
+        String orderDescription = (String) event.get(Constant.FIELD_ORDER_DESCRIPTION);
+        BigDecimal totalAmount = new BigDecimal(event.get(Constant.FIELD_TOTAL_AMOUNT).toString());
+        String existingSagaId = (String) event.get(Constant.FIELD_SAGA_ID); // Get existing sagaId
+
         try {
-            Long orderId = Long.valueOf(event.get(Constant.FIELD_ORDER_ID).toString());
-            String userId = (String) event.get(Constant.FIELD_USER_ID);
-            String userEmail = (String) event.get(Constant.FIELD_USER_EMAIL);
-            String userName = (String) event.get(Constant.FIELD_USER_NAME);
-            String orderDescription = (String) event.get(Constant.FIELD_ORDER_DESCRIPTION);
-            java.math.BigDecimal totalAmount = new java.math.BigDecimal(event.get(Constant.FIELD_TOTAL_AMOUNT).toString());
-
-            log.info(Constant.LOG_STARTING_SAGA_FOR_ORDER,
-                    orderId, userId, totalAmount);
-
-            orderPurchaseSagaService.startSaga(userId, orderId, userEmail, userName, orderDescription, totalAmount);
-
-            log.info(Constant.LOG_SAGA_STARTED_SUCCESS, orderId);
-
+            // Start saga with existing sagaId
+            orderPurchaseSagaService.startSaga(userId, orderId, userEmail, userName,
+                    orderDescription, totalAmount, existingSagaId);
         } catch (Exception e) {
             log.error(Constant.ERROR_HANDLING_ORDER_CREATED, e);
             throw new RuntimeException(Constant.ERROR_FAILED_TO_START_SAGA, e);

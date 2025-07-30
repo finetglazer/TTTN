@@ -87,10 +87,11 @@ public class Order {
     private List<OrderHistory> orderHistories = new ArrayList<>();
 
     /**
-     * Business method to create a new order
+     * Business method to create a new order with pre-generated sagaId
      */
     public static Order createOrder(String userId, String userEmail, String userName,
-                                    String orderDescription, BigDecimal totalAmount, String shippingAddress) {
+                                            String orderDescription, BigDecimal totalAmount,
+                                            String shippingAddress, String sagaId) {
         return Order.builder()
                 .userId(userId)
                 .userEmail(userEmail)
@@ -99,6 +100,7 @@ public class Order {
                 .totalAmount(totalAmount)
                 .status(OrderStatus.CREATED)
                 .shippingAddress(shippingAddress)
+                .sagaId(sagaId)  // Set sagaId immediately
                 .build();
     }
 

@@ -1,12 +1,11 @@
 package com.graduation.sagaorchestratorservice.service;
 
 import com.graduation.sagaorchestratorservice.constants.Constant;
-import com.graduation.sagaorchestratorservice.exception.SagaExecutionException;
-import com.graduation.sagaorchestratorservice.exception.SagaNotFoundException;
 import com.graduation.sagaorchestratorservice.model.OrderPurchaseSagaState;
 import com.graduation.sagaorchestratorservice.model.SagaEvent;
 import com.graduation.sagaorchestratorservice.model.enums.*;
 import com.graduation.sagaorchestratorservice.repository.OrderPurchaseSagaStateRepository;
+
 import com.graduation.sagaorchestratorservice.utils.SagaIdGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -64,7 +63,8 @@ public class OrderPurchaseSagaService {
      */
     @Transactional
     public OrderPurchaseSagaState startSaga(String userId, Long orderId, String userEmail,
-                                            String userName, String orderDescription, BigDecimal totalAmount) {
+                                            String userName, String orderDescription,
+                                            BigDecimal totalAmount, String existingSagaId) {
 
         log.info(Constant.LOG_STARTING_ORDER_PURCHASE_SAGA, orderId, userId);
 
@@ -75,8 +75,9 @@ public class OrderPurchaseSagaService {
             return existingSaga.get();
         }
 
-        // Generate unique saga ID
-        String sagaId = SagaIdGenerator.generateForType("ORDER_PURCHASE");
+        // Use the sagaId from the order (generated during order creation)
+        String sagaId = existingSagaId != null ? existingSagaId :
+                SagaIdGenerator.generateForType("ORDER_PURCHASE");
 
         // Create and save the saga
         OrderPurchaseSagaState saga = OrderPurchaseSagaState.initiate(
