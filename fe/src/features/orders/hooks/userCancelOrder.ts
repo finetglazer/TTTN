@@ -19,7 +19,7 @@ interface CancelOrderResponse {
     success: boolean;
     message: string;
     status: number;
-    data?: any;
+    data?: object;
 }
 
 export const useCancelOrder = () => {
